@@ -1,0 +1,201 @@
+---
+title: "Metrics"
+author: "Qualitative Data Repository"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE) 
+library(httr)
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+source("helper.R")
+
+dataverse_host <- "http://data.qdr.syr.edu"
+dataverse_key <- Sys.getenv("DATAVERSE_TOKEN")
+drupal_use <- "drupal-metrics/use-stats.csv"
+login_file <- "drupal-metrics/login-history-sample.csv"
+
+# Calculate dates
+today <- Sys.Date()
+period_end <- as.Date("2021-01-01")
+
+# Drupal data, format as necessary
+use <- read_csv(drupal_use)
+login <- read_csv(login_file)
+
+#login <- login[complete.cases(login), ]
+login$Created <- as.Date(login$Created, format = "%m/%d/%Y")
+login$`Last login` <- as.Date(login$`Last login`, format = "%a, %m/%d/%Y - %R")
+login$Institution <- toupper(login$Institution)
+login$Institution <- trimws(login$Institution)
+login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
+
+login$member <- checkif_member(login)
+#institutional_members <- login[login$member, ]
+#institutional_usercount <- sum(login$member)
+
+drupal_users <- nrow(login)
+login$frequent_flyer <- login$`Logins during time period` > 10
+drupal_new_users <- sum(login$Created > period_end)
+
+drupal_all_logins <- sum(login$`Logins during time period`)
+drupal_unique_logins <- sum(login$`Last login` > period_end)
+drupal_logins_without_ff <- sum(login$`Logins during time period`[!login$frequent_flyer])
+
+# Dataverse data
+dataverse <- paste0(dataverse_host, "/api/info/metrics")
+# This implements the search API to get all available data for all datasets
+deposits <- content(GET(paste0(dataverse_host,
+                               "/api/search/?q=*&type=dataset&per_page=1000"),
+                        config=add_headers("X-Dataverse-Key"=dataverse_key)))
+deposits <- tibble(deposit=deposits$data$items)
+deposits <- deposits %>% unnest_wider(deposit)
+```
+
+## Parameters
+
+- Arbitrarily defined end-point date is set to `r period_end`.
+
+## Drupal
+
+- QDR currently has `r drupal_users` users registered in Drupal. 
+- `r drupal_new_users` of those users were created since `r period_end`. 
+- `r drupal_unique_logins` unique users have logged in since `r period_end`.
+
+Based on the time period used to generate the `r login_file` file:
+
+- There have been `r drupal_all_logins` logins. 
+- If we subtract the "frequent flyers" (arbitrary number of login/user), this number drops to `r drupal_logins_without_ff`.  
+
+```{r drupal}
+login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
+  arrange(desc(users)) %>% slice(1:10) %>%
+  knitr::kable(row.names = FALSE, col.names = c("Institution", "Affiliated users"),
+               caption="Top institutional affiliations by number of users")
+
+use %>% select(-`Views today`) %>% arrange(desc(`Total views`)) %>% slice(1:10) %>%
+  knitr::kable(row.names = FALSE, col.names = c("Title", "Views", "Link"),
+               caption="Most accessed drupal pages")
+```
+
+```{r members_drupal}
+members_drupal <- count(group_by(login, member))
+
+members_drupal <- login %>% group_by(member) %>% summarize(logins=sum(`Logins during time period`)) %>% full_join(members_drupal)
+
+login %>% group_by(member) %>% filter(Created > period_end) %>% 
+  summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
+  arrange(desc(n)) %>% replace_na(list(created_since=0)) %>%
+  knitr::kable(col.names = c("Institution", paste("Created since", period_end),
+                             "Logins", "Total users"),
+               caption="Statistics of institutional member accounts")
+```
+
+## Dataverse
+
+```{r total_projects}
+dataverse_total <- nrow(deposits)
+deposits_new <- sum(as.Date(deposits$createdAt) > period_end)
+```
+
+- There are currently `r dataverse_total` projects. 
+- `r deposits_new` are from the period beginning `r period_end`.
+
+```{r subject}
+deposits$versionState %>% table() %>% 
+  knitr::kable(caption="Deposit publication status", col.names=c("Status", "Deposits"))
+
+subject <- content(GET(paste0(dataverse, "/datasets/bySubject")))
+subject <- bind_rows(subject$data)
+subject$count <- round(100*(subject$count/sum(subject$count)), digits=2)
+knitr::kable(subject, col.names=c("Subject", "Percentage"), 
+             caption="Distribution of deposit subjects")
+```
+
+```{r top}
+projects <- content(GET(paste0(dataverse, "/uniquedownloads/monthly")))
+projects <- bind_rows(projects$data)
+projects$date <- as.Date(paste0(projects$date, "-01"))
+
+projects %>% group_by(pid) %>% summarize(sum(count)) %>% 
+  arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
+  knitr::kable(caption="Top 5 all time downloaded projects",
+             row.names = FALSE, col.names = c("Persistent ID", "Downloads"))
+
+projects %>% group_by(pid) %>% filter(date > period_end) %>% 
+  summarize(sum(count)) %>% arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
+  knitr::kable(caption=paste("Top 5 downloaded projects since", period_end),
+             row.names = FALSE, col.names = c("Persistent ID", "Downloads"))
+```
+
+
+### Institutional members
+```{r member_projects}
+# Can we detect institutional members from our routine earlier based on names?
+deposit_members <- lapply(deposits$contacts, function(x, login) {
+  names <- tibble(x=x) %>% hoist(x, "name") %>% .$name
+  match <- str_which(login$full_name, paste(names, collapse="|"))[1]
+  if (length(match)==0) return(NA)
+  return(login$member[match])
+}, login)
+deposits <- tibble(member=deposit_members) %>% unnest(member) %>% bind_cols(deposits)
+
+deposits %>% filter(!is.na(member)) %>% group_by(member, versionState) %>% 
+  tally() %>%
+  knitr::kable(caption = "Deposits associated with institution", 
+               col.names = c("Institution", "Status", "Deposits"))
+
+deposits %>% filter(!is.na(member) & as.Date(createdAt) > period_end) %>% 
+  group_by(member, versionState) %>% 
+  summarize(length(global_id)) %>%
+  knitr::kable(caption=paste("Deposits since", period_end),
+               col.names = c("Institution", "Status", "Deposits"))
+
+projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
+  inner_join(deposits) %>% select("name", "member", "downloads") %>%
+  filter(!is.na(member)) %>% arrange(desc(downloads)) %>%
+  group_by(member) %>% slice_head(n=3) %>%
+  knitr::kable(caption="Top 3 downloads from each member institution",
+               col.names = c("Deposit", "Member institution", "Downloads"))
+```
+
+## Make Data Count
+```{r views}
+views_total <- content(GET(paste0(dataverse, '/makeDataCount/viewsTotal/monthly')))
+views_total <- bind_rows(views_total$data)
+names(views_total) <- c("date", "total")
+
+views_unique <- content(GET(paste0(dataverse, '/makeDataCount/viewsUnique/monthly')))
+views_unique <- bind_rows(views_unique$data)
+names(views_unique) <- c("date", "unique")
+
+both <- merge(views_total, views_unique, all=TRUE, by="date")
+both_ts <- ts(both[, -1], frequency=12, 
+              start=strsplit(both$date[1], split="-")[[1]])
+autoplot(both_ts, facets = FALSE) + labs(title="Views", color="Statistic") 
+```
+
+```{r downloads}
+downloads_total <- content(GET(paste0(dataverse, '/makeDataCount/downloadsTotal/monthly')))
+downloads_total <- bind_rows(downloads_total$data)
+names(downloads_total) <- c("date", "total")
+
+downloads_unique <- content(GET(paste0(dataverse, '/makeDataCount/downloadsUnique/monthly')))
+downloads_unique <- do.call(rbind.data.frame, downloads_unique$data)
+names(downloads_unique) <- c("date", "unique")
+
+both <- merge(downloads_total, downloads_unique, all=TRUE, by="date")
+both_ts <- ts(both[, -1], frequency=12, 
+              start=strsplit(both$date[1], split="-")[[1]])
+autoplot(both_ts, facets = FALSE) +  labs(title="Downloads", color="Statistic") 
+```
+

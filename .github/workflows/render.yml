@@ -1,0 +1,30 @@
+on: workflow_dispatch
+
+name: Render metrics-reports
+
+jobs:
+  render:
+    name: Render metrics-reports 
+    runs-on: macOS-latest
+    env:
+      DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
+      EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: r-lib/actions/setup-r@v1
+      - uses: r-lib/actions/setup-pandoc@v1
+      #- name: Install LaTeX
+      #  run: sudo apt-get install texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+      - name: Install rmarkdown
+        run: Rscript -e 'install.packages(c("zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
+      - name: Download private Drupal data
+        run: |
+          git clone "https://$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/drupal-metrics"
+      - name: Render documents
+        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "html_document", output_dir="drupal-metrics/")'
+      - name: Commit results
+        run: |
+          cd drupal-metrics/
+          git add metrics_report.*
+          git commit -am "$(date)"
+          git push
