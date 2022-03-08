@@ -21,7 +21,7 @@ jobs:
         run: |
           git clone "https://$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/drupal-metrics"
       - name: Render documents
-        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "html_document", output_dir="drupal-metrics/")'
+        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir="drupal-metrics/")'
       - name: Commit results
         run: |
           cd drupal-metrics/
