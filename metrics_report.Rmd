@@ -21,8 +21,9 @@ source("helper.R")
 
 dataverse_host <- "http://data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN")
-drupal_use <- "drupal-metrics/use-stats.csv"
-login_file <- "drupal-metrics/login-history-sample.csv"
+drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal")
+drupal_use <- paste0(drupal_folder, "/use-stats.csv")
+login_file <- paste0(drupal_folder, "/login-history.csv")
 
 # Calculate dates
 today <- Sys.Date()

@@ -7,8 +7,7 @@ jobs:
     name: Render metrics-reports 
     runs-on: macOS-latest
     env:
-      DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
-      EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
+      EXTERNAL_GH_FOLDER: "metrics-qdr-private"
     steps:
       - uses: actions/checkout@v2
       - uses: r-lib/actions/setup-tinytex@master
@@ -19,13 +18,17 @@ jobs:
       - name: Install rmarkdown
         run: Rscript -e 'install.packages(c("zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
       - name: Download private Drupal data
+        env:
+          EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
         run: |
-          git clone "https://$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/drupal-metrics"
+          git clone "https://$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/$EXTERNAL_GH_FOLDER"
       - name: Render documents
-        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir="drupal-metrics/")'
+        env:
+          DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
+        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir="$EXTERNAL_GH_FOLDER/")'
       - name: Commit results
         run: |
-          cd drupal-metrics/
+          cd $EXTERNAL_GH_FOLDER
           git add metrics_report.*
           git commit -am "$(date)"
           git push
