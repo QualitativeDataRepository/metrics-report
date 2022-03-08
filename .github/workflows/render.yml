@@ -15,7 +15,7 @@ jobs:
       - uses: r-lib/actions/setup-r@v1
       - uses: r-lib/actions/setup-pandoc@v1
       - name: Install LaTeX
-        run: brew cask install basictex
+        run: brew install --cask basictex
       - name: Install rmarkdown
         run: Rscript -e 'install.packages(c("zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
       - name: Download private Drupal data
