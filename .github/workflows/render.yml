@@ -7,7 +7,7 @@ jobs:
     name: Render metrics-reports 
     runs-on: macOS-latest
     env:
-      EXTERNAL_GH_FOLDER: "metrics-qdr-private"
+      EXTERNAL_GH_FOLDER: ${{ secrets.EXTERNAL_GH_FOLDER }}
     steps:
       - uses: actions/checkout@v2
       - uses: r-lib/actions/setup-tinytex@master
@@ -25,7 +25,7 @@ jobs:
       - name: Render documents
         env:
           DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
-        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir="$EXTERNAL_GH_FOLDER/")'
+        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir=Sys.getenv("EXTERNAL_GH_FOLDER"))'
       - name: Commit results
         run: |
           cd $EXTERNAL_GH_FOLDER
