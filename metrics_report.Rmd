@@ -1,10 +1,10 @@
 ---
-title: "Metrics"
+title: "Metrics report"
 author: "Qualitative Data Repository"
-date: "Generated `r Sys.Date()`"
+date: "Generated `r Sys.time()`"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 editor_options:
   chunk_output_type: console
 ---
@@ -28,9 +28,10 @@ drupal_use <- paste0(drupal_folder, "/use-stats.csv")
 drupal_login <- paste0(drupal_folder, "/login-history.csv")
 
 # Calculate dates
-period_begin <- as.Date("2021-01-01")
-period_end <- as.Date("2021-12-31")
-
+period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
+                              "01-01", sep = "-"))
+period_end <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
+                              "12-31", sep = "-"))
 # Drupal data, format as necessary
 use <- read_csv(drupal_use)
 login <- read_csv(drupal_login)
@@ -75,6 +76,7 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 ## Parameters
 
 - Special period: `r period_begin` to `r period_end`.
+- Extensions to institutional member list: `r extension_names`
 
 ## Drupal
 
@@ -107,12 +109,13 @@ members_drupal <- count(group_by(login, member))
 
 members_drupal <- login %>% group_by(member) %>% summarize(logins=sum(`Logins during time period`)) %>% full_join(members_drupal)
 
-login %>% group_by(member) %>% filter(Created > period_end) %>% 
+login %>% group_by(member) %>% filter(Created < period_end & Created > period_begin) %>% 
   summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
   arrange(desc(n)) %>% # replace_na(list(created_since=0)) %>%
-  knitr::kable(col.names = c("Institution", paste("Created since", period_end),
+  knitr::kable(col.names = c("Institution", paste("Created between", 
+                                                  period_begin, "and", period_end),
                              "Logins", "Total users"),
-               caption="Statistics of institutional member accounts")
+               caption="User statistics of institutional member drupal accounts")
 ```
 
 ## Dataverse
@@ -161,8 +164,6 @@ projects %>% group_by(pid) %>% filter(date < period_end) %>%
 
 ### Institutional members
 
-- Manually specified extensions: `r extension_names`
-
 ```{r member_projects}
 # Can we detect institutional members from our routine earlier based on names?
 deposit_members <- lapply(deposits$contacts, function(x, login) {
@@ -173,17 +174,19 @@ deposit_members <- lapply(deposits$contacts, function(x, login) {
 }, login)
 deposits <- tibble(member=deposit_members) %>% unnest(member) %>% bind_cols(deposits)
 
-deposits %>% filter(!is.na(member)) %>% group_by(member, versionState) %>% 
-  tally() %>%
-  knitr::kable(caption = "Deposits associated with institution", 
-               col.names = c("Institution", "Status", "Deposits"))
+member_deposits <- deposits %>% filter(!is.na(member)) %>% 
+  group_by(member, versionState) %>% 
+  tally()
+#  knitr::kable(caption = "Deposits associated with member", 
+#               col.names = c("Institution", "Status", "Deposits"))
 
 deposits %>% filter(!is.na(member) & as.Date(createdAt) > period_end) %>% 
   group_by(member, versionState) %>% 
-  summarize(length(global_id)) %>%
-  knitr::kable(caption=paste("Deposits between", period_begin, 
-                             "and", period_end),
-               col.names = c("Institution", "Status", "Deposits"))
+  summarize(period=length(global_id)) %>% full_join(member_deposits) %>%
+  knitr::kable(caption="Deposits associated with member",
+               col.names = c("Institution", "Status", 
+                             paste(period_begin, "to", period_end),
+                             "Total"))
 
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   inner_join(deposits) %>% select("name", "global_id", "member", "downloads") %>%
@@ -219,7 +222,7 @@ downloads_total <- bind_rows(downloads_total$data)
 names(downloads_total) <- c("date", "total")
 
 downloads_unique <- content(GET(paste0(dataverse, '/makeDataCount/downloadsUnique/monthly')))
-downloads_unique <- do.call(rbind.data.frame, downloads_unique$data)
+downloads_unique <- bind_rows(downloads_unique$data)
 names(downloads_unique) <- c("date", "unique")
 
 both <- merge(downloads_total, downloads_unique, all=TRUE, by="date")
