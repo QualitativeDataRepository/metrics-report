@@ -1,6 +1,6 @@
 library(stringr)
 
-checkif_member <- function(login) {
+checkif_member <- function(login, extension=NULL) {
   institutions <- structure(list(name = c("American", "Brown", "Case Western", 
                                           "Columbia", "Cornell", "Duke", "Fordham", "George Mason", "George Washington", 
                                           "Macalester", "Marine Corps", "3ie", "New York", "Palliative Care Research Cooperative", 
@@ -16,6 +16,10 @@ checkif_member <- function(login) {
                                             "umaryland.edu", "umich.edu", "unm.edu", "unc.edu", "utexas.edu", 
                                             "villanova.edu", "vt.edu", "wvu.edu")), 
                             class = "data.frame", row.names = c(NA, -28L))
+  
+  if (!is.null(extension)) {
+    institutions <- rbind.data.frame(institutions, extension)
+  }
   
   login$Institution <- str_remove(login$Institution, " UNIVERSITY$")
   login$Institution <- str_remove(login$Institution, "^UNIVERSITY OF ")
