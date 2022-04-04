@@ -20,21 +20,53 @@ library(ggplot2)
 library(ggfortify)
 source("helper.R")
 
+# Institutional members
+members <-
+  c(
+    "American University",
+    "Brown University",
+    "Case Western",
+    "Columbia University",
+    "Cornell University",
+    "Duke",
+    "Fordham",
+    "George Mason",
+    "George Washington",
+    "Macalester",
+    "Marine Corps",
+    "3ie",
+    "New York University",
+    "Palliative Care Research Cooperative",
+    "Princeton University",
+    "Syracuse University",
+    "University of California, Berkeley",
+    "California, Merced",
+    "Cincinnati",
+    "University of Iowa",
+    "Maryland Baltimore",
+    "University of Michigan",
+    "University of New Mexico",
+    "University of North Carolina at Chapel Hill",
+    "Texas, Austin",
+    "Villanova",
+    "Virginia Tech",
+    "West Virginia"
+  )
+
 # Set tokens and file location settings
 dataverse_host <- "http://data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN")
 drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal")
-drupal_use <- paste0(drupal_folder, "/use-stats.csv")
-drupal_login <- paste0(drupal_folder, "/login-history.csv")
 
 # Calculate dates
 period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
                               "01-01", sep = "-"))
 period_end <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
                               "12-31", sep = "-"))
+
 # Drupal data, format as necessary
-use <- read_csv(drupal_use)
-login <- read_csv(drupal_login)
+use <- read_csv(paste0(drupal_folder, "/use-stats.csv"))
+login <- read_csv(paste0(drupal_folder, "/login-history.csv"))
 
 #login <- login[complete.cases(login), ]
 login$Created <- as.Date(login$Created, format = "%m/%d/%Y")
@@ -53,8 +85,8 @@ login$member <- checkif_member(login, extend_members)
 
 # Basic statistics
 drupal_users <- nrow(login)
-ff_cutoff <- 10 # How many logins before a user is considered a "frequent flyer"?
-login$frequent_flyer <- login$`Logins during time period` > ff_cutoff
+# How many logins before a user is considered a "frequent flyer"?
+login$frequent_flyer <- login$`Logins during time period` > 10
 drupal_new_users <- sum(login$Created < period_end & login$Created > period_begin)
 
 drupal_all_logins <- sum(login$`Logins during time period`)
@@ -69,6 +101,38 @@ deposits <- content(GET(paste0(dataverse_host,
                         config=add_headers("X-Dataverse-Key"=dataverse_key)))
 deposits <- tibble(deposit=deposits$data$items)
 deposits <- deposits %>% unnest_wider(deposit)
+
+# Check for institutional members
+institutions <- lapply(deposits$global_id, FUN=function(x, key) {
+  metadata <- content(GET(paste0("http://data.qdr.syr.edu",
+         "/api/datasets/:persistentId/?persistentId=", 
+         x), config=add_headers("X-Dataverse-Key"=key)))
+  
+  metadata <- 
+    tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
+    unnest_wider(info)
+  
+  affiliations <-
+    metadata %>% filter(typeName == "author") %>% select("value") %>%
+    unnest_auto(value) %>% unnest_auto(value)
+  
+  # check if there's no affiliation entry in the metadata
+  if (is.null(affiliations$authorAffiliation)) {
+    return(NA)
+  }
+  
+  affiliations %>%
+    select("authorAffiliation") %>% unnest_wider(authorAffiliation) %>%
+    select("value") %>% .$value
+}, dataverse_key)
+
+regex <- paste0("\\b(?:", paste(members, collapse="|"), ")\\b")
+matches <- lapply(institutions, function(x, regex) {
+  matches <- stringr::str_extract(x, regex)
+  dplyr::first(na.omit(matches))
+}, regex)
+deposits$member <- unlist(matches)
+
 deposits$name <- stringr::str_trunc(deposits$name, 75, "right")
 deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRAFT="Unpublished")
 ```
@@ -84,10 +148,10 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 - `r drupal_new_users` of those users were created between `r period_begin` and `r period_end`.
 - `r drupal_unique_logins` unique users have logged in since `r period_begin`.
 
-Based on the time period used to generate the `r drupal_login` file:
+Based on the time period used to generate the drupal login csv file:
 
 - There have been `r drupal_all_logins` logins. 
-- If we subtract the "frequent flyers" (`r ff_cutoff` logins/user), this number drops to `r drupal_logins_without_ff`.  
+- If we subtract the "frequent flyers" (10 logins/user), this number drops to `r drupal_logins_without_ff`.  
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
@@ -129,14 +193,23 @@ deposits_new <- sum(as.Date(deposits$createdAt) < period_end & as.Date(deposits$
 - `r deposits_new` are from the period between `r period_begin` and `r period_end`.
 
 ```{r subject}
-deposits$versionState %>% table() %>% 
+deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
   knitr::kable(caption="Deposits by publication status", col.names=c("Status", "Deposits"))
 
-subject <- content(GET(paste0(dataverse, "/datasets/bySubject")))
-subject <- bind_rows(subject$data)
-subject$count <- round(100*(subject$count/sum(subject$count)), digits=2)
-knitr::kable(subject, col.names=c("Subject", "Percentage"), 
-             caption="Distribution of deposit subjects")
+deposits %>% select(c("versionState", "subjects")) %>%
+  unnest_longer(subjects) %>% group_by(versionState, subjects) %>%
+  summarize(pct=round(100*(n()/nrow(deposits)), digits=2)) %>%
+  knitr::kable(caption="Deposits by subject", 
+               col.names=c("Status", "Subject", "Percentage of projects"))
+
+deposits %>% filter(as.Date(createdAt) < period_end &
+                      as.Date(createdAt) > period_begin) %>%
+  select(c("versionState", "subjects")) %>%
+  unnest_longer(subjects) %>% group_by(versionState, subjects) %>%
+  summarize(pct=round(100*(n()/nrow(deposits)), digits=2)) %>%
+  knitr::kable(caption=paste("Deposits by subject between", period_begin,
+                             "and", period_end),
+               col.names=c("Status", "Subject", "Percentage of projects"))
 ```
 
 ```{r top}
@@ -165,15 +238,6 @@ projects %>% group_by(pid) %>% filter(date < period_end) %>%
 ### Institutional members
 
 ```{r member_projects}
-# Can we detect institutional members from our routine earlier based on names?
-deposit_members <- lapply(deposits$contacts, function(x, login) {
-  names <- tibble(x=x) %>% hoist(x, "name") %>% .$name
-  match <- str_which(login$full_name, paste(names, collapse="|"))[1]
-  if (length(match)==0) return(NA)
-  return(login$member[match])
-}, login)
-deposits <- tibble(member=deposit_members) %>% unnest(member) %>% bind_cols(deposits)
-
 member_deposits <- deposits %>% filter(!is.na(member)) %>% 
   group_by(member, versionState) %>% 
   tally()
