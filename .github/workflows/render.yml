@@ -19,6 +19,8 @@ jobs:
         env:
           R_COMPILE_AND_INSTALL_PACKAGES: never
         run: Rscript -e 'install.packages(c("curl", "zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
+      - name: Reinstall tinytex
+        run: Rscript -e 'tinytex::reinstall_tinytex()'
       - name: Download private Drupal data
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
