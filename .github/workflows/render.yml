@@ -5,7 +5,7 @@ name: Render metrics-reports
 jobs:
   render:
     name: Render metrics-reports 
-    runs-on: macOS-latest
+    runs-on: ubuntu-latest
     env:
       EXTERNAL_GH_FOLDER: ${{ secrets.EXTERNAL_GH_FOLDER }}
     steps:
@@ -14,7 +14,7 @@ jobs:
       - uses: r-lib/actions/setup-r@v1
       - uses: r-lib/actions/setup-pandoc@v1
       - name: Install LaTeX
-        run: brew install --cask basictex
+        run: sudo apt install texlive-latex-recommended
       - name: Install rmarkdown
         run: Rscript -e 'install.packages(c("zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
       - name: Download private Drupal data
