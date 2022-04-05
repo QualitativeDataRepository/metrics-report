@@ -81,7 +81,7 @@ login$Institution <- trimws(login$Institution)
 login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
 # This runs the helper function
-login$member <- checkif_member(login) # Needs the extension too!
+login$member <- checkif_member(login, extend) # Needs the extension too!
 
 # Basic statistics
 drupal_users <- nrow(login)
@@ -140,7 +140,6 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 ## Parameters
 
 - Special period: `r period_begin` to `r period_end`.
-- Extensions to institutional member list: `r extend`
 
 ## Drupal
 
