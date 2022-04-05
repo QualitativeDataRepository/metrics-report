@@ -28,10 +28,10 @@ members <-
     "Case Western",
     "Columbia University",
     "Cornell University",
-    "Duke",
+    "Duke University",
     "Fordham",
     "George Mason",
-    "George Washington",
+    "George Washington University",
     "Macalester",
     "Marine Corps",
     "3ie",
@@ -39,16 +39,16 @@ members <-
     "Palliative Care Research Cooperative",
     "Princeton University",
     "Syracuse University",
-    "University of California, Berkeley",
+    "University of California, Berkeley|UC Berkeley",
     "California, Merced",
-    "Cincinnati",
+    "University of Cincinnati",
     "University of Iowa",
-    "Maryland Baltimore",
+    "University of Maryland Baltimore",
     "University of Michigan",
     "University of New Mexico",
     "University of North Carolina at Chapel Hill",
-    "Texas, Austin",
-    "Villanova",
+    "University of Texas at Austin",
+    "Villanova University",
     "Virginia Tech",
     "West Virginia"
   )
@@ -139,7 +139,7 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 ## Parameters
 
 - Special period: `r period_begin` to `r period_end`.
-- Extensions to institutional member list: `r extension_names`
+- Extensions to institutional member list: `r extend`
 
 ## Drupal
 
