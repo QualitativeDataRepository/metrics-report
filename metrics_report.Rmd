@@ -52,6 +52,10 @@ members <-
     "Virginia Tech",
     "West Virginia"
   )
+# Add the prospective institutional member
+extend <- Sys.getenv("extend_im")
+if (extend!="") members <- c(members, extend)
+
 
 # Set tokens and file location settings
 dataverse_host <- "http://data.qdr.syr.edu"
@@ -76,12 +80,7 @@ login$Institution <- trimws(login$Institution)
 login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
 # This runs the helper function
-extend_members <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/extend_members.csv")
-if (file.exists(extend_members)) {
-  extend_members <- read_csv(extend_members)
-  extension_names <- paste(extend_members$name, collapse=", ")
-}
-login$member <- checkif_member(login, extend_members)
+login$member <- checkif_member(login) # Needs the extension too!
 
 # Basic statistics
 drupal_users <- nrow(login)

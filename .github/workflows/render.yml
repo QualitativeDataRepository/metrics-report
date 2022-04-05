@@ -1,5 +1,10 @@
-on: workflow_dispatch
-
+on: 
+  workflow_dispatch:
+    inputs:
+      extend_im:
+        description: 'Prospective institutional member'     
+        required: FALSE
+        
 name: Render metrics-reports
 
 jobs:
@@ -27,6 +32,7 @@ jobs:
       - name: Render documents
         env:
           DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
+          extend_im: ${{ github.event.inputs.extend_im }}
         run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir=Sys.getenv("EXTERNAL_GH_FOLDER"))'
       - name: Commit results
         run: |
