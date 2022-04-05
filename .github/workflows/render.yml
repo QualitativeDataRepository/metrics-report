@@ -23,7 +23,7 @@ jobs:
       - name: Install rmarkdown
         env:
           R_COMPILE_AND_INSTALL_PACKAGES: never
-        run: Rscript -e 'install.packages(c("curl", "zoo", "httr", "readr", "tidyr", "dplyr", "ggplot2", "ggfortify", "rmarkdown"))'
+        run: Rscript -e 'install.packages(c("curl", "zoo", "httr", "readr", "tidyr", "dplyr", "stringi", "ggplot2", "ggfortify", "rmarkdown"))'
       - name: Download private Drupal data
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
