@@ -54,8 +54,8 @@ members <-
     "West Virginia"
   )
 # Add the prospective institutional member
-extend <- stringi::stri_enc_toascii(Sys.getenv("extend_im"))
-if (extend!="") members <- c(members, extend)
+#extend <- stringi::stri_enc_toascii(Sys.getenv("extend_im"))
+#if (extend!="") members <- c(members, extend)
 
 
 # Set tokens and file location settings
@@ -81,7 +81,7 @@ login$Institution <- trimws(login$Institution)
 login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
 # This runs the helper function
-login$member <- checkif_member(login, extend) # Needs the extension too!
+login$member <- checkif_member(login) # Needs the extension too!
 
 # Basic statistics
 drupal_users <- nrow(login)
