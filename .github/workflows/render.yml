@@ -18,16 +18,13 @@ jobs:
       - uses: r-lib/actions/setup-r@v1
       - uses: r-lib/actions/setup-pandoc@v1
       - name: Install dependencies
-        env: 
-          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get install texlive-latex-recommended libcurl4-openssl-dev
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache-version: 1
-          extra-packages: |
-            any::rmarkdown, any::curl, any::tidyverse, any::zoo 
-            any::ggplot2, any::ggfortify, any::stringi, any::tinytex
+          sudo apt-get install texlive-latex-recommended
+          sudo apt-get install libcurl4-openssl-dev r-cran-curl
+          sudo apt-get install r-cran-rmarkdown r-cran-tidyverse
+          sudo apt-get install r-cran-stringi r-cran-zoo r-cran-ggplot2
+      - name: Install R packages
+        run: Rscript -e 'install.packages(c("ggfortify"))'
       - name: Download private Drupal data
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
