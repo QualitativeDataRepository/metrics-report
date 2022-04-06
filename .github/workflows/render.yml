@@ -15,15 +15,16 @@ jobs:
       EXTERNAL_GH_FOLDER: ${{ secrets.EXTERNAL_GH_FOLDER }}
     steps:
       - uses: actions/checkout@v2
-      - uses: r-lib/actions/setup-tinytex@v2
       - uses: r-lib/actions/setup-r@v1
       - uses: r-lib/actions/setup-pandoc@v1
-      - name: Install debian packages
-        run: sudo apt install libcurl4-openssl-dev texlive-latex-recommended
-      - name: Install rmarkdown
-        env:
-          R_COMPILE_AND_INSTALL_PACKAGES: never
-        run: Rscript -e 'install.packages(c("curl", "zoo", "httr", "readr", "tidyr", "dplyr", "stringi", "ggplot2", "ggfortify", "rmarkdown"))'
+      - name: Install dependencies
+        run: |
+          sudo apt-get install texlive-latex-recommended
+          sudo apt-get install libcurl4-openssl-dev r-cran-curl
+          sudo apt-get install r-cran-rmarkdown r-cran-tidyverse
+          sudo apt-get install r-cran-stringi r-cran-zoo r-cran-ggplot2
+      - name: Install R packages
+        run: Rscript -e 'install.packages(c("ggfortify"))'
       - name: Download private Drupal data
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
