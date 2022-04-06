@@ -3,7 +3,9 @@ title: "Metrics report"
 author: "Qualitative Data Repository"
 date: "Generated `r Sys.time()`"
 output:
-  pdf_document: default
+  pdf_document: 
+    includes:
+      in_header: header.tex
   html_document: default
 editor_options:
   chunk_output_type: console
