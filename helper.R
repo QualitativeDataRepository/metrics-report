@@ -18,7 +18,7 @@ checkif_member <- function(login, extension=NULL) {
                             class = "data.frame", row.names = c(NA, -28L))
   
   if (!is.null(extension)) {
-    institutions <- rbind.data.frame(institutions, extension)
+    institutions <- rbind.data.frame(institutions, data.frame(extension, NA))
   }
   
   login$Institution <- str_remove(login$Institution, " UNIVERSITY$")
