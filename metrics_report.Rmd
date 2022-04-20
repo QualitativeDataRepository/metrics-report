@@ -218,36 +218,36 @@ deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
 
 deposits_published %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(pct=round(100*(n()/nrow(deposits_published)), digits=2)) %>%
+  summarize(n=n(), pct=round(100*(n()/nrow(deposits_published)), digits=2)) %>%
   knitr::kable(caption="Published deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Percentage of projects")) 
+               col.names=c("Subject", "Projects", "Percentage of projects")) 
 
 deposits_unpublished %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(pct=round(100*(n()/nrow(deposits_unpublished)), digits=2)) %>%
+  summarize(n=n(), pct=round(100*(n()/nrow(deposits_unpublished)), digits=2)) %>%
   knitr::kable(caption="Draft deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Percentage of projects")) 
+               col.names=c("Subject", "Projects", "Percentage of projects")) 
 
 deposits_published %>% filter(as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin) %>%
   select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(pct=round(100*(n()/nrow(filter(deposits_published, as.Date(createdAt) < period_end &
+  summarize(n=n(), pct=round(100*(n()/nrow(filter(deposits_published, as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin))), digits=2)) %>%
   knitr::kable(caption=paste("Deposits by subject published between", period_begin,
                              "and", period_end),
-               col.names=c("Subject", "Percentage of projects"))
+               col.names=c("Subject", "Projects", "Percentage of projects"))
 
 
 deposits_unpublished %>% filter(as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin) %>%
   select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(pct=round(100*(n()/nrow(filter(deposits_unpublished, as.Date(createdAt) < period_end &
+  summarize(n=n(), pct=round(100*(n()/nrow(filter(deposits_unpublished, as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin))), digits=2)) %>%
   knitr::kable(caption=paste("Draf deposits by subject created between", period_begin,
                              "and", period_end),
-               col.names=c("Subject", "Percentage of projects"))
+               col.names=c("Subject", "Projects", "Percentage of projects"))
 ```
 
 ```{r top}
@@ -323,7 +323,8 @@ names(views_unique) <- c("date", "unique")
 both <- merge(views_total, views_unique, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") 
+autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") +
+  scale_y_continuous(labels=scales::comma)
 ```
 
 
@@ -340,6 +341,7 @@ names(downloads_unique) <- c("date", "unique")
 both <- merge(downloads_total, downloads_unique, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) +  labs(title="MDC Downloads", color="Statistic") 
+autoplot(both_ts, facets = FALSE) +  labs(title="MDC Downloads", color="Statistic") +
+  scale_y_continuous(labels=scales::comma)
 ```
 
