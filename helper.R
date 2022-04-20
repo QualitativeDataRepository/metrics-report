@@ -21,6 +21,7 @@ checkif_member <- function(login, extension=NULL) {
     institutions <- rbind.data.frame(institutions, data.frame(name=extension, domain=NA))
   }
   
+  login$Institution <- str_replace_all(login$Institution, "[[:punct:]]", "")
   login$Institution <- str_remove(login$Institution, " UNIVERSITY$")
   login$Institution <- str_remove(login$Institution, "^UNIVERSITY OF ")
   login$`Name/Email` <- str_extract(login$`Name/Email`, "[a-zA-Z0-9]+\\.edu$")
