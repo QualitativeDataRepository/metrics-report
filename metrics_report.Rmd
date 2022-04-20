@@ -23,6 +23,17 @@ library(ggfortify)
 library(stringi)
 source("helper.R")
 
+### Configurable variables
+
+# Custom start and end dates: use YYYY-MM-DD format
+# If these aren't provided, we'll: default to today's date as end date and to the beginning of the year as the start date
+period_begin <- NULL
+period_end <- NULL
+
+# How many logins before we assume a user is QDR staff?
+QDR_staff_logins <- 10
+
+
 # Institutional members
 members <-
   c(
@@ -65,11 +76,13 @@ dataverse_host <- "http://data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN")
 drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal")
 
-# Calculate dates
-period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
-                              "01-01", sep = "-"))
-period_end <- as.Date(paste(as.integer(format(Sys.Date(), "%Y"))-1,
-                              "12-31", sep = "-"))
+# Calculate dates: We use YTD if none are given
+if (is.null(period_begin)) {
+  period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y")),
+                              "01-01", sep = "-"))}
+if (is.null(period_end)){
+  period_end <- Sys.Date()
+}
 
 # Drupal data, format as necessary
 use <- read_csv(paste0(drupal_folder, "/use-stats.csv"))
@@ -82,13 +95,14 @@ login$Institution <- toupper(login$Institution)
 login$Institution <- trimws(login$Institution)
 login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
+# Use number of logins specified above for QDR membership
+login$frequent_flyer <- login$`Logins during time period` > QDR_staff_logins
 # This runs the helper function
 login$member <- checkif_member(login, extend) # Needs the extension too!
 
 # Basic statistics
 drupal_users <- nrow(login)
-# How many logins before a user is considered a "frequent flyer"?
-login$frequent_flyer <- login$`Logins during time period` > 10
+
 drupal_new_users <- sum(login$Created < period_end & login$Created > period_begin)
 
 drupal_all_logins <- sum(login$`Logins during time period`)
@@ -103,7 +117,7 @@ deposits <- content(GET(paste0(dataverse_host,
                         config=add_headers("X-Dataverse-Key"=dataverse_key)))
 deposits <- tibble(deposit=deposits$data$items)
 deposits <- deposits %>% unnest_wider(deposit)
-
+ 
 # Check for institutional members
 institutions <- lapply(deposits$global_id, FUN=function(x, key) {
   metadata <- content(GET(paste0("http://data.qdr.syr.edu",
@@ -141,8 +155,8 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 
 ## Parameters
 
-- Special period: `r period_begin` to `r period_end`.
-- Extensions: `r extend`
+- Reporting period: `r period_begin` to `r period_end`.
+- Non-member institutions considered: `r extend`
 
 ## Drupal
 
@@ -153,7 +167,7 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 Based on the time period used to generate the drupal login csv file:
 
 - There have been `r drupal_all_logins` logins. 
-- If we subtract the "frequent flyers" (10 logins/user), this number drops to `r drupal_logins_without_ff`.  
+- If we subtract presumed QDR staff members (>`QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
@@ -167,7 +181,7 @@ use %>% select(-`Views today`) %>% arrange(desc(`Total views`)) %>%
                       "https://qdr.syr.edu", `Link to Content`, ")")) %>%
   select(!`Link to Content`) %>%
   knitr::kable(row.names = FALSE, col.names = c("Title", "Views"),
-               caption="Most accessed drupal pages")
+               caption="Most viewed QDR pages")
 ```
 
 ```{r members_drupal}
@@ -181,37 +195,59 @@ login %>% group_by(member) %>% filter(Created < period_end & Created > period_be
   knitr::kable(col.names = c("Institution", paste("Created between", 
                                                   period_begin, "and", period_end),
                              "Logins", "Total users"),
-               caption="User statistics of institutional member drupal accounts")
+               caption="QDR Accounts and Logins by Institutional Members")
 ```
 
 ## Dataverse
 
 ```{r total_projects}
 dataverse_total <- nrow(deposits)
+deposits_published <- deposits %>% filter(versionState == "RELEASED")
+deposits_unpublished <- deposits %>% filter(versionState == "DRAFT")
 deposits_new <- sum(as.Date(deposits$createdAt) < period_end & as.Date(deposits$createdAt) > period_begin)
+published_new <- sum(as.Date(deposits_published$published_at) < period_end & as.Date(deposits_published$published_at) > period_begin)
 ```
 
 - There are currently `r dataverse_total` projects. 
-- `r deposits_new` are from the period between `r period_begin` and `r period_end`.
+- `r deposits_new` new deposits were initiated between `r period_begin` and `r period_end`.
+- `r published_new` projects were published between `r period_begin` and `r period_end`.
 
 ```{r subject}
 deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
-  knitr::kable(caption="Deposits by publication status", col.names=c("Status", "Deposits"))
+  knitr::kable(caption="Total deposits by publication status", col.names=c("Status", "Deposits"))
 
-deposits %>% select(c("versionState", "subjects")) %>%
-  unnest_longer(subjects) %>% group_by(versionState, subjects) %>%
-  summarize(pct=round(100*(n()/nrow(deposits)), digits=2)) %>%
-  knitr::kable(caption="Deposits by subject", 
-               col.names=c("Status", "Subject", "Percentage of projects"))
+deposits_published %>% select(c("subjects")) %>%
+  unnest_longer(subjects) %>% group_by(subjects) %>%
+  summarize(pct=round(100*(n()/nrow(deposits_published)), digits=2)) %>%
+  knitr::kable(caption="Published deposits by subject (projects can have multiple subjects)", 
+               col.names=c("Subject", "Percentage of projects")) 
 
-deposits %>% filter(as.Date(createdAt) < period_end &
+deposits_unpublished %>% select(c("subjects")) %>%
+  unnest_longer(subjects) %>% group_by(subjects) %>%
+  summarize(pct=round(100*(n()/nrow(deposits_unpublished)), digits=2)) %>%
+  knitr::kable(caption="Draft deposits by subject (projects can have multiple subjects)", 
+               col.names=c("Subject", "Percentage of projects")) 
+
+deposits_published %>% filter(as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin) %>%
-  select(c("versionState", "subjects")) %>%
-  unnest_longer(subjects) %>% group_by(versionState, subjects) %>%
-  summarize(pct=round(100*(n()/nrow(deposits)), digits=2)) %>%
-  knitr::kable(caption=paste("Deposits by subject between", period_begin,
+  select(c("subjects")) %>%
+  unnest_longer(subjects) %>% group_by(subjects) %>%
+  summarize(pct=round(100*(n()/nrow(filter(deposits_published, as.Date(createdAt) < period_end &
+                      as.Date(createdAt) > period_begin))), digits=2)) %>%
+  knitr::kable(caption=paste("Deposits by subject published between", period_begin,
                              "and", period_end),
-               col.names=c("Status", "Subject", "Percentage of projects"))
+               col.names=c("Subject", "Percentage of projects"))
+
+
+deposits_unpublished %>% filter(as.Date(createdAt) < period_end &
+                      as.Date(createdAt) > period_begin) %>%
+  select(c("subjects")) %>%
+  unnest_longer(subjects) %>% group_by(subjects) %>%
+  summarize(pct=round(100*(n()/nrow(filter(deposits_unpublished, as.Date(createdAt) < period_end &
+                      as.Date(createdAt) > period_begin))), digits=2)) %>%
+  knitr::kable(caption=paste("Draf deposits by subject created between", period_begin,
+                             "and", period_end),
+               col.names=c("Subject", "Percentage of projects"))
 ```
 
 ```{r top}
@@ -232,7 +268,8 @@ projects %>% group_by(pid) %>% filter(date < period_end) %>%
   mutate(pid = paste0("[", deposits$name[deposits$global_id %in% pid], "](", 
                       "https://data.qdr.syr.edu/dataset.xhtml?persistentId=", 
                       pid, ")")) %>%
-  knitr::kable(caption=paste("Top 5 downloaded projects since", period_end),
+  knitr::kable(caption=paste("Top 5 downloaded projects between ", period_begin,
+                             "and", period_end),
              row.names = FALSE, col.names = c("Project", "Downloads"))
 ```
 
@@ -249,9 +286,9 @@ member_deposits <- deposits %>% filter(!is.na(member)) %>%
 deposits %>% filter(!is.na(member) & as.Date(createdAt) > period_end) %>% 
   group_by(member, versionState) %>% 
   summarize(period=length(global_id)) %>% full_join(member_deposits) %>%
-  knitr::kable(caption="Deposits associated with member",
+  knitr::kable(caption="Deposits associated with institutional members",
                col.names = c("Institution", "Status", 
-                             paste(period_begin, "to", period_end),
+                             "Reporting period",
                              "Total"))
 
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
@@ -266,7 +303,14 @@ projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
                linesep = "\\addlinespace")
 ```
 
-## Make Data Count
+## Make Data Count (MDC)
+
+### Understanding MDC data
+
+MDC reports statistics as "total" and "unique". 
+- Unique" views/downloads correspond to the number of unique sessions in which a data project has been viewed/downloaded. Roughly translates to: "X people have viewed/downloaded this project or its files."
+- Total views/downloads correspond to the number of times a project has been viewed/downloaded, including, e.g., multiple counts for multiple views/downloads in the same session or by the same user.
+
 ```{r views}
 views_total <- content(GET(paste0(dataverse, '/makeDataCount/viewsTotal/monthly')))
 views_total <- bind_rows(views_total$data)
@@ -279,8 +323,10 @@ names(views_unique) <- c("date", "unique")
 both <- merge(views_total, views_unique, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) + labs(title="Views", color="Statistic") 
+autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") 
 ```
+
+
 
 ```{r downloads}
 downloads_total <- content(GET(paste0(dataverse, '/makeDataCount/downloadsTotal/monthly')))
@@ -294,6 +340,6 @@ names(downloads_unique) <- c("date", "unique")
 both <- merge(downloads_total, downloads_unique, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) +  labs(title="Downloads", color="Statistic") 
+autoplot(both_ts, facets = FALSE) +  labs(title="MDC Downloads", color="Statistic") 
 ```
 
