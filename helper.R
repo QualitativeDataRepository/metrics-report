@@ -22,7 +22,7 @@ checkif_member <- function(login, extension=NULL) {
   }
   
   login$Institution <- str_replace_all(login$Institution, "[[:punct:]]", "")
-  institutions$name <- str_replace_all(institutions$name, "[[:punt:]]", "")
+  institutions$name <- str_replace_all(institutions$name, "[[:punct:]]", "")
 
   login$Institution <- str_remove(login$Institution, " UNIVERSITY$")
   login$Institution <- str_remove(login$Institution, "^UNIVERSITY OF ")
