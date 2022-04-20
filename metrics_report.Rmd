@@ -202,8 +202,8 @@ login %>% group_by(member) %>% filter(Created < period_end & Created > period_be
 
 ```{r total_projects}
 dataverse_total <- nrow(deposits)
-deposits_published <- deposits %>% filter(versionState == "RELEASED")
-deposits_unpublished <- deposits %>% filter(versionState == "DRAFT")
+deposits_published <- deposits %>% filter(versionState == "Published")
+deposits_unpublished <- deposits %>% filter(versionState == "Unpublished")
 deposits_new <- sum(as.Date(deposits$createdAt) < period_end & as.Date(deposits$createdAt) > period_begin)
 published_new <- sum(as.Date(deposits_published$published_at) < period_end & as.Date(deposits_published$published_at) > period_begin)
 ```
