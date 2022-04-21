@@ -105,7 +105,7 @@ drupal_users <- nrow(login)
 
 drupal_new_users <- sum(login$Created < period_end & login$Created > period_begin)
 
-drupal_all_logins <- sum(login$`Logins during time period`)
+drupal_all_logins <- as.integer(sum(login$`Logins during time period`))
 drupal_unique_logins <- sum(login$`Last login` > period_begin)
 drupal_logins_without_ff <- sum(login$`Logins during time period`[!login$frequent_flyer])
 
@@ -202,7 +202,7 @@ if (file.exists("deposits.rds")) {
 Based on the time period used to generate the drupal login csv file:
 
 - There have been `r drupal_all_logins` logins. 
-- If we subtract presumed QDR staff members (> `QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
+- If we subtract presumed QDR staff members (> `r QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
