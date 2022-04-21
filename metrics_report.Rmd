@@ -263,8 +263,8 @@ projects %>% group_by(pid) %>% summarize(sum(count)) %>%
   knitr::kable(caption="Top 5 all time downloaded projects",
              row.names = FALSE, col.names = c("Project", "Downloads"))
 
-projects %>% group_by(pid) %>% filter(as.Date(createdAt) < period_end &
-                      as.Date(createdAt) > period_begin) %>% 
+projects %>% group_by(pid) %>% filter(date < period_end &
+                      date > period_begin) %>% 
   summarize(sum(count)) %>% arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
   mutate(pid = paste0("[", deposits$name[deposits$global_id %in% pid], "](", 
                       "https://data.qdr.syr.edu/dataset.xhtml?persistentId=", 
