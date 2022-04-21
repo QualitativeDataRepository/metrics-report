@@ -167,7 +167,7 @@ deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRA
 Based on the time period used to generate the drupal login csv file:
 
 - There have been `r drupal_all_logins` logins. 
-- If we subtract presumed QDR staff members (>`QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
+- If we subtract presumed QDR staff members (> `QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
