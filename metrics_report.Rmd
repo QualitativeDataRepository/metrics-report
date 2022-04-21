@@ -111,46 +111,81 @@ drupal_logins_without_ff <- sum(login$`Logins during time period`[!login$frequen
 
 # Dataverse data
 dataverse <- paste0(dataverse_host, "/api/info/metrics")
-# This implements the search API to get all available data for all datasets
-deposits <- content(GET(paste0(dataverse_host,
-                               "/api/search/?q=*&type=dataset&per_page=1000"),
-                        config=add_headers("X-Dataverse-Key"=dataverse_key)))
-deposits <- tibble(deposit=deposits$data$items)
-deposits <- deposits %>% unnest_wider(deposit)
- 
-# Check for institutional members
-institutions <- lapply(deposits$global_id, FUN=function(x, key) {
-  metadata <- content(GET(paste0("http://data.qdr.syr.edu",
-         "/api/datasets/:persistentId/?persistentId=", 
-         x), config=add_headers("X-Dataverse-Key"=key)))
+if (file.exists("deposits.rds")) {
+  deposits <- readRDS("deposits.rds")
+  projects <- readRDS("projects.rds")
+  mdc <- readRDS("mdc.rds")
+} else {
+  # This implements the search API to get all available data for all datasets
+  deposits <- content(GET(paste0(dataverse_host,
+                                 "/api/search/?q=*&type=dataset&per_page=1000"),
+                          config=add_headers("X-Dataverse-Key"=dataverse_key)))
+  deposits <- tibble(deposit=deposits$data$items)
+  deposits <- deposits %>% unnest_wider(deposit)
   
-  metadata <- 
-    tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
-    unnest_wider(info)
+  # Check for institutional members
+  institutions <- lapply(deposits$global_id, FUN=function(x, key) {
+    metadata <- content(GET(paste0("http://data.qdr.syr.edu",
+                                   "/api/datasets/:persistentId/?persistentId=", 
+                                   x), config=add_headers("X-Dataverse-Key"=key)))
+    
+    metadata <- 
+      tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
+      unnest_wider(info)
+    
+    affiliations <-
+      metadata %>% filter(typeName == "author") %>% select("value") %>%
+      unnest_auto(value) %>% unnest_auto(value)
+    
+    # check if there's no affiliation entry in the metadata
+    if (is.null(affiliations$authorAffiliation)) {
+      return(NA)
+    }
+    
+    affiliations %>%
+      select("authorAffiliation") %>% unnest_wider(authorAffiliation) %>%
+      select("value") %>% .$value
+  }, dataverse_key)
   
-  affiliations <-
-    metadata %>% filter(typeName == "author") %>% select("value") %>%
-    unnest_auto(value) %>% unnest_auto(value)
+  regex <- paste0("\\b(?:", paste(members, collapse="|"), ")\\b")
+  matches <- lapply(institutions, function(x, regex) {
+    matches <- stringr::str_extract(x, regex)
+    dplyr::first(na.omit(matches))
+  }, regex)
+  deposits$member <- unlist(matches)
   
-  # check if there's no affiliation entry in the metadata
-  if (is.null(affiliations$authorAffiliation)) {
-    return(NA)
-  }
+  deposits$name <- stringr::str_trunc(deposits$name, 75, "right")
+  deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRAFT="Unpublished")
+  saveRDS(deposits, "deposits.rds")
   
-  affiliations %>%
-    select("authorAffiliation") %>% unnest_wider(authorAffiliation) %>%
-    select("value") %>% .$value
-}, dataverse_key)
+  projects <- content(GET(paste0(dataverse, "/uniquedownloads/monthly")))
+  projects <- bind_rows(projects$data)
+  projects$date <- as.Date(paste0(projects$date, "-01"))
+  saveRDS(projects, "projects.rds")
+  
+  views_total <- content(GET(paste0(dataverse, '/makeDataCount/viewsTotal/monthly')))
+  views_total <- bind_rows(views_total$data)
+  names(views_total) <- c("date", "total")
+  
+  views_unique <- content(GET(paste0(dataverse, '/makeDataCount/viewsUnique/monthly')))
+  views_unique <- bind_rows(views_unique$data)
+  names(views_unique) <- c("date", "unique")
+  
+  downloads_total <- content(GET(paste0(dataverse, '/makeDataCount/downloadsTotal/monthly')))
+  downloads_total <- bind_rows(downloads_total$data)
+  names(downloads_total) <- c("date", "total")
+  
+  downloads_unique <- content(GET(paste0(dataverse, '/makeDataCount/downloadsUnique/monthly')))
+  downloads_unique <- bind_rows(downloads_unique$data)
+  names(downloads_unique) <- c("date", "unique")
 
-regex <- paste0("\\b(?:", paste(members, collapse="|"), ")\\b")
-matches <- lapply(institutions, function(x, regex) {
-  matches <- stringr::str_extract(x, regex)
-  dplyr::first(na.omit(matches))
-}, regex)
-deposits$member <- unlist(matches)
+  mdc <- list(vt = views_total,
+              vu = views_unique,
+              dt = downloads_total,
+              du = downloads_unique)
+  saveRDS(mdc, "mdc.rds")
+}
 
-deposits$name <- stringr::str_trunc(deposits$name, 75, "right")
-deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRAFT="Unpublished")
 ```
 
 ## Parameters
@@ -251,10 +286,6 @@ deposits_unpublished %>% filter(as.Date(createdAt) < period_end &
 ```
 
 ```{r top}
-projects <- content(GET(paste0(dataverse, "/uniquedownloads/monthly")))
-projects <- bind_rows(projects$data)
-projects$date <- as.Date(paste0(projects$date, "-01"))
-
 projects %>% group_by(pid) %>% summarize(sum(count)) %>% 
   arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
   mutate(pid = paste0("[", deposits$name[deposits$global_id %in% pid], "](", 
@@ -314,15 +345,7 @@ MDC reports statistics as "total" and "unique".
 - Total views/downloads correspond to the number of times a project has been viewed/downloaded, including, e.g., multiple counts for multiple views/downloads in the same session or by the same user.
 
 ```{r views}
-views_total <- content(GET(paste0(dataverse, '/makeDataCount/viewsTotal/monthly')))
-views_total <- bind_rows(views_total$data)
-names(views_total) <- c("date", "total")
-
-views_unique <- content(GET(paste0(dataverse, '/makeDataCount/viewsUnique/monthly')))
-views_unique <- bind_rows(views_unique$data)
-names(views_unique) <- c("date", "unique")
-
-both <- merge(views_total, views_unique, all=TRUE, by="date")
+both <- merge(mdc$vt, mdc$vu, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
 autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") +
@@ -332,15 +355,7 @@ autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") +
 
 
 ```{r downloads}
-downloads_total <- content(GET(paste0(dataverse, '/makeDataCount/downloadsTotal/monthly')))
-downloads_total <- bind_rows(downloads_total$data)
-names(downloads_total) <- c("date", "total")
-
-downloads_unique <- content(GET(paste0(dataverse, '/makeDataCount/downloadsUnique/monthly')))
-downloads_unique <- bind_rows(downloads_unique$data)
-names(downloads_unique) <- c("date", "unique")
-
-both <- merge(downloads_total, downloads_unique, all=TRUE, by="date")
+both <- merge(mdc$dt, mdc$du, all=TRUE, by="date")
 both_ts <- ts(both[, -1], frequency=12, 
               start=strsplit(both$date[1], split="-")[[1]])
 autoplot(both_ts, facets = FALSE) +  labs(title="MDC Downloads", color="Statistic") +
