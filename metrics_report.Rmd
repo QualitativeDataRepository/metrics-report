@@ -1,5 +1,5 @@
 ---
-title: "Metrics report"
+title: "QDR Metrics Report"
 author: "Qualitative Data Repository"
 date: "Generated `r Sys.time()`"
 output:
@@ -96,7 +96,7 @@ login$Institution <- trimws(login$Institution)
 login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
 # Use number of logins specified above for QDR membership
-login$frequent_flyer <- login$`Logins during time period` > QDR_staff_logins
+login$frequent_flyer <- login$`Logins during time period` > `QDR_staff_logins`
 # This runs the helper function
 login$member <- checkif_member(login, extend) # Needs the extension too!
 
@@ -263,7 +263,8 @@ projects %>% group_by(pid) %>% summarize(sum(count)) %>%
   knitr::kable(caption="Top 5 all time downloaded projects",
              row.names = FALSE, col.names = c("Project", "Downloads"))
 
-projects %>% group_by(pid) %>% filter(date < period_end) %>% 
+projects %>% group_by(pid) %>% filter(as.Date(createdAt) < period_end &
+                      as.Date(createdAt) > period_begin) %>% 
   summarize(sum(count)) %>% arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
   mutate(pid = paste0("[", deposits$name[deposits$global_id %in% pid], "](", 
                       "https://data.qdr.syr.edu/dataset.xhtml?persistentId=", 
@@ -308,6 +309,7 @@ projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
 ### Understanding MDC data
 
 MDC reports statistics as "total" and "unique". 
+
 - Unique" views/downloads correspond to the number of unique sessions in which a data project has been viewed/downloaded. Roughly translates to: "X people have viewed/downloaded this project or its files."
 - Total views/downloads correspond to the number of times a project has been viewed/downloaded, including, e.g., multiple counts for multiple views/downloads in the same session or by the same user.
 
