@@ -224,9 +224,15 @@ members_drupal <- count(group_by(login, member))
 
 members_drupal <- login %>% group_by(member) %>% summarize(logins=sum(`Logins during time period`)) %>% full_join(members_drupal)
 
-login %>% group_by(member) %>% filter(Created < period_end & Created > period_begin) %>% 
+im_drupal <- login %>% group_by(member) %>% filter(Created < period_end & Created > period_begin) %>% 
   summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
-  arrange(desc(n)) %>% # replace_na(list(created_since=0)) %>%
+  arrange(desc(n)) %>% replace_na(list(created_since=0))
+
+im_drupal %>% filter(!is.na(member)) %>%
+  replace_na(replace = list(created_since=0, logins=0, n=0)) %>%
+  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_drupal.csv"))
+
+im_drupal %>%
   knitr::kable(col.names = c("Institution", paste("Created between", 
                                                   period_begin, "and", period_end),
                              "Logins", "Total users"),
@@ -327,7 +333,9 @@ im_deposit %>% knitr::kable(caption="Deposits associated with institutional memb
                              "Published in reporting period", "Unpublished in reporting period"))
 
 # Write that table as a csv
-write_csv(im_deposit, paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_deposits.csv"))
+im_deposit %>% 
+  replace_na(list(n.Published=0, n.Unpublished=0, period.Published=0, period.Unpublished=0)) %>%
+  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_deposits.csv"))
 
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   inner_join(deposits) %>% select("name", "global_id", "member", "downloads") %>%
