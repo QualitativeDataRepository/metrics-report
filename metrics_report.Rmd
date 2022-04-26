@@ -319,7 +319,7 @@ im_deposit <-
   deposits %>% filter(!is.na(member) & as.Date(createdAt) < period_end & as.Date(createdAt) > period_begin) %>% 
   group_by(member, versionState) %>% 
   summarize(period=length(global_id)) %>% full_join(member_deposits) %>%
-  pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), fill=0) 
+  pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), values_fill=0) 
   
 im_deposit %>% knitr::kable(caption="Deposits associated with institutional members",
                col.names = c("Institutional member name", 
