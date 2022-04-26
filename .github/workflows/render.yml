@@ -36,7 +36,6 @@ jobs:
           cd $EXTERNAL_GH_FOLDER
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add metrics_report.*
-          git add *.csv
+          git add -A
           git commit -am "$(date)"
           git push
