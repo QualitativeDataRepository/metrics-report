@@ -37,5 +37,6 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add metrics_report.*
+          git add *.csv
           git commit -am "$(date)"
           git push
