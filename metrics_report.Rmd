@@ -237,10 +237,12 @@ login %>% group_by(member) %>% filter(Created < period_end & Created > period_be
 
 ```{r total_projects}
 dataverse_total <- nrow(deposits)
-deposits_published <- deposits %>% filter(versionState == "Published")
-deposits_unpublished <- deposits %>% filter(versionState == "Unpublished")
-deposits_new <- sum(as.Date(deposits$createdAt) < period_end & as.Date(deposits$createdAt) > period_begin)
-published_new <- sum(as.Date(deposits_published$published_at) < period_end & as.Date(deposits_published$published_at) > period_begin)
+
+deposits_new <- deposits %>% filter(as.Date(createdAt) < period_end & as.Date(createdAt) > period_begin) %>%
+  summarize(n=n()) %>% .$n
+
+published_new <- deposits %>% filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin) %>%
+  summarize(n=n()) %>% .$n
 ```
 
 - There are currently `r dataverse_total` projects. 
@@ -251,38 +253,36 @@ published_new <- sum(as.Date(deposits_published$published_at) < period_end & as.
 deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
   knitr::kable(caption="Total deposits by publication status", col.names=c("Status", "Deposits"))
 
-deposits_published %>% select(c("subjects")) %>%
+deposits %>% filter(versionState=="Published") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
   summarize(n=n(), pct=round(100*(n()/nrow(deposits_published)), digits=2)) %>%
   knitr::kable(caption="Published deposits by subject (projects can have multiple subjects)", 
                col.names=c("Subject", "Projects", "Percentage of projects")) 
 
-deposits_unpublished %>% select(c("subjects")) %>%
+deposits %>% filter(versionState=="Unpublished") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n(), pct=round(100*(n()/nrow(deposits_unpublished)), digits=2)) %>%
+  summarize(n=n()) %>%
   knitr::kable(caption="Draft deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Projects", "Percentage of projects")) 
+               col.names=c("Subject", "Projects")) 
 
-deposits_published %>% filter(as.Date(createdAt) < period_end &
-                      as.Date(createdAt) > period_begin) %>%
+deposits %>% filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
+                      versionState=="Published") %>%
   select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n(), pct=round(100*(n()/nrow(filter(deposits_published, as.Date(createdAt) < period_end &
-                      as.Date(createdAt) > period_begin))), digits=2)) %>%
+  summarize(n=n()) %>%
   knitr::kable(caption=paste("Deposits by subject published between", period_begin,
                              "and", period_end),
-               col.names=c("Subject", "Projects", "Percentage of projects"))
+               col.names=c("Subject", "Projects"))#, "Percentage of projects"))
 
 
-deposits_unpublished %>% filter(as.Date(createdAt) < period_end &
+deposits %>% filter(versionState == "Unpublished" & as.Date(createdAt) < period_end &
                       as.Date(createdAt) > period_begin) %>%
   select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n(), pct=round(100*(n()/nrow(filter(deposits_unpublished, as.Date(createdAt) < period_end &
-                      as.Date(createdAt) > period_begin))), digits=2)) %>%
-  knitr::kable(caption=paste("Draf deposits by subject created between", period_begin,
+  summarize(n=n()) %>%
+  knitr::kable(caption=paste("Draft deposits by subject created between", period_begin,
                              "and", period_end),
-               col.names=c("Subject", "Projects", "Percentage of projects"))
+               col.names=c("Subject", "Projects"))
 ```
 
 ```{r top}

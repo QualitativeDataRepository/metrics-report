@@ -19,9 +19,9 @@ jobs:
       - uses: r-lib/actions/setup-r@v1
       - uses: r-lib/actions/setup-pandoc@v1
       - uses: r-lib/actions/setup-r-dependencies@v2
-      - name: Install debian packages
-        run: sudo apt install libcurl4-openssl-dev texlive-latex-recommended
-      - name: Download private Drupal data
+      - name: Install extra LaTeX packages
+        run: sudo apt install texlive-latex-recommended
+      - name: Clone private data repository
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
         run: |
