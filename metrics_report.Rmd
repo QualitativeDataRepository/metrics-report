@@ -255,9 +255,9 @@ deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
 
 deposits %>% filter(versionState=="Published") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n(), pct=round(100*(n()/nrow(deposits_published)), digits=2)) %>%
+  summarize(n=n()) %>%
   knitr::kable(caption="Published deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Projects", "Percentage of projects")) 
+               col.names=c("Subject", "Projects"))#, "Percentage of projects")) 
 
 deposits %>% filter(versionState=="Unpublished") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>%
