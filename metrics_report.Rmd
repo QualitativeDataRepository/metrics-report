@@ -13,7 +13,7 @@ editor_options:
 
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE) 
-opts <- options(knitr.kable.NA = "")
+opts <- options(knitr.kable.NA = "0")
 library(httr)
 library(readr)
 library(tidyr)
@@ -259,36 +259,43 @@ published_new <- deposits %>% filter(as.Date(published_at) < period_end & as.Dat
 deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
   knitr::kable(caption="Total deposits by publication status", col.names=c("Status", "Deposits"))
 
-deposits %>% filter(versionState=="Published") %>% select(c("subjects")) %>%
-  unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n()) %>%
-  knitr::kable(caption="Published deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Projects"))#, "Percentage of projects")) 
+deposits_subj <- deposits %>% 
+  filter(versionState=="Published") %>% select(c("subjects")) %>%
+  unnest_longer(subjects) %>% group_by(subjects) %>% summarize(published=n())
 
-deposits %>% filter(versionState=="Unpublished") %>% select(c("subjects")) %>%
-  unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n()) %>%
-  knitr::kable(caption="Draft deposits by subject (projects can have multiple subjects)", 
-               col.names=c("Subject", "Projects")) 
+deposits_subj <- deposits %>% 
+  filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
+           versionState=="Published") %>%
+  select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
+  summarize(period=n()) %>% full_join(deposits_subj)
 
-deposits %>% filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
-                      versionState=="Published") %>%
-  select(c("subjects")) %>%
-  unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n()) %>%
-  knitr::kable(caption=paste("Deposits by subject published between", period_begin,
-                             "and", period_end),
-               col.names=c("Subject", "Projects"))#, "Percentage of projects"))
+# Any unpublished projects?
+if (any(deposits$versionState=="Unpublished")) {
+  deposits_subj <- deposits %>% filter(versionState=="Unpublished") %>% select(c("subjects")) %>%
+    unnest_longer(subjects) %>% group_by(subjects) %>%
+    summarize(unpublished=n()) %>% full_join(deposits_subj)
+} else {
+  deposits_subj$unpublished <- 0
+}
 
+# Any unpublished in the time period specified?
+if (any(subset(deposits, as.Date(createdAt) < period_end &
+               as.Date(createdAt) > period_begin)$versionState=="Unpublished")) {
+  deposits_subj <- deposits %>% filter(versionState == "Unpublished" & 
+                                      as.Date(createdAt) < period_end &
+                                      as.Date(createdAt) > period_begin) %>%
+    select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
+    summarize(unpublished_period=n()) %>% full_join(deposits_subj)
+} else {
+  deposits_subj$unpublished_period <- 0
+}
 
-deposits %>% filter(versionState == "Unpublished" & as.Date(createdAt) < period_end &
-                      as.Date(createdAt) > period_begin) %>%
-  select(c("subjects")) %>%
-  unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(n=n()) %>%
-  knitr::kable(caption=paste("Draft deposits by subject created between", period_begin,
-                             "and", period_end),
-               col.names=c("Subject", "Projects"))
+deposits_subj[, c("subjects", "published", 
+                  "unpublished", "period", "unpublished_period")] %>% 
+  knitr::kable(caption="Deposits by subject",
+               col.names=c("Subject", "Total published", "Total unpublished",
+                           "Published in reporting period", 
+                           "Unpublished in reporting period"))
 ```
 
 ```{r top}
