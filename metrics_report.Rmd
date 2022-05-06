@@ -27,8 +27,8 @@ source("helper.R")
 
 # Custom start and end dates: use YYYY-MM-DD format
 # If these aren't provided, we'll: default to today's date as end date and to the beginning of the year as the start date
-period_begin <- NULL
-period_end <- NULL
+period_begin <- 2021-06-01
+period_end <- 
 
 # How many logins before we assume a user is QDR staff?
 QDR_staff_logins <- 10
@@ -46,15 +46,14 @@ members <-
     "Fordham",
     "George Mason",
     "George Washington University",
-    "Macalester",
     "Marine Corps",
-    "3ie",
     "New York University",
     "Palliative Care Research Cooperative",
     "Princeton University",
     "Syracuse University",
     "University of California, Berkeley|UC Berkeley",
-    "California, Merced",
+    "California, Merced|UC Merced",
+    "University of California, San Francisco|UCSF",
     "University of Cincinnati",
     "University of Iowa",
     "University of Maryland Baltimore",
