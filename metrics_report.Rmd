@@ -27,8 +27,8 @@ source("helper.R")
 
 # Custom start and end dates: use YYYY-MM-DD format
 # If these aren't provided, we'll: default to today's date as end date and to the beginning of the year as the start date
-period_begin <- 2021-06-01
-period_end <- 
+period_begin <- as.Date("2021-06-01")
+period_end <- as.Date("2020-06-01")
 
 # How many logins before we assume a user is QDR staff?
 QDR_staff_logins <- 10
@@ -269,11 +269,17 @@ deposits_subj <- deposits %>%
   filter(versionState=="Published") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>% summarize(published=n())
 
-deposits_subj <- deposits %>% 
-  filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
-           versionState=="Published") %>%
-  select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
-  summarize(period=n()) %>% full_join(deposits_subj)
+  
+if  (any(subset(deposits, as.Date(createdAt) < period_end &
+               as.Date(createdAt) > period_begin))) {
+  deposits_subj <- deposits %>% 
+    filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
+             versionState=="Published") %>%
+    select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
+    summarize(period=n()) %>% full_join(deposits_subj)
+} else {
+  deposits_subj$period <- 0
+}
 
 # Any unpublished projects?
 if (any(deposits$versionState=="Unpublished")) {
