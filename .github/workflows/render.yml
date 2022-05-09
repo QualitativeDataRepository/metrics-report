@@ -5,10 +5,10 @@ on:
         description: 'Prospective institutional member'     
         required: FALSE
       period_begin:
-        description: 'Period beginning date (YYYY-MM_DD)'
+        description: 'Period beginning date (YYYY-MM-DD)'
         required: FALSE
       period_end:
-        description: 'Period ending date (YYYY-MM-DD'
+        description: 'Period ending date (YYYY-MM-DD)'
         required: FALSE
 
 name: Render metrics-reports
