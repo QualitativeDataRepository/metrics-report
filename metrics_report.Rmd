@@ -271,14 +271,16 @@ deposits_subj <- deposits %>%
   unnest_longer(subjects) %>% group_by(subjects) %>% summarize(published=n())
 
   
-if  (any(subset(deposits, as.Date(createdAt) < period_end &
-               as.Date(createdAt) > period_begin))) {
+if  (nrow(subset(deposits, as.Date(createdAt) < period_end &
+               as.Date(createdAt) > period_begin))==0) {
+  
   deposits_subj <- deposits %>% 
     filter(as.Date(published_at) < period_end & as.Date(published_at) > period_begin & 
              versionState=="Published") %>%
     select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
     summarize(period=n()) %>% full_join(deposits_subj)
-} else {
+
+  } else {
   deposits_subj$period <- 0
 }
 
