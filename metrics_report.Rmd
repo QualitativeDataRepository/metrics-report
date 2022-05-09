@@ -26,9 +26,18 @@ source("helper.R")
 ### Configurable variables
 
 # Custom start and end dates: use YYYY-MM-DD format
+# These are specified from the workflow
 # If these aren't provided, we'll: default to today's date as end date and to the beginning of the year as the start date
-period_begin <- as.Date("2021-06-01")
-period_end <- as.Date("2020-06-01")
+period_begin <- as.Date(Sys.getenv("period_begin"))
+period_end <- as.Date(Sys.getenv("period_end"))
+
+# Calculate dates: We use YTD if none are given
+if (is.na(period_begin)) {
+  period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y")),
+                              "01-01", sep = "-"))}
+if (is.na(period_end)){
+  period_end <- Sys.Date()
+}
 
 # How many logins before we assume a user is QDR staff?
 QDR_staff_logins <- 10
@@ -73,14 +82,6 @@ if (extend!="") members <- c(members, extend)
 dataverse_host <- "http://data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN") # Github secret
 drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal") # Github secret
-
-# Calculate dates: We use YTD if none are given
-if (is.null(period_begin)) {
-  period_begin <- as.Date(paste(as.integer(format(Sys.Date(), "%Y")),
-                              "01-01", sep = "-"))}
-if (is.null(period_end)){
-  period_end <- Sys.Date()
-}
 
 # Drupal data, format as necessary
 use <- read_csv(paste0(drupal_folder, "/use-stats.csv"))
