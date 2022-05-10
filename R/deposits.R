@@ -34,9 +34,12 @@ deposits_get <- function(domain, key=NULL) {
     deposits <- tibble(deposit=deposits$data$items) %>% unnest_wider(deposit) %>%
       bind_rows(deposits)
   }
+  
+  deposits <- deposits %>% distinct(global_id, .keep_all = TRUE)
 
   deposits$name <- stringr::str_trunc(deposits$name, 75, "right")
   deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRAFT="Unpublished")
+  
 
   return(deposits)
 }
