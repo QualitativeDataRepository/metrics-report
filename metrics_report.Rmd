@@ -97,13 +97,13 @@ login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 # Use number of logins specified above for QDR membership
 login$frequent_flyer <- login$`Logins during time period` > `QDR_staff_logins`
 # This runs the helper function
-login$member <- checkif_member(login, extend) # Needs the extension too!
+login$member <- checkif_member(login, extend)
+login$recent <- as.Date(login$`Last login`) > period_begin
 
 # Calculate basic drupal summary stats
 drupal_users <- nrow(login)
 drupal_new_users <- sum(login$Created < period_end & login$Created > period_begin)
-drupal_all_logins <- as.integer(sum(login$`Logins during time period`))
-drupal_unique_logins <- sum(login$`Last login` > period_begin)
+drupal_unique_logins <- as.integer(sum(login$recent))
 drupal_logins_without_ff <- sum(login$`Logins during time period`[!login$frequent_flyer])
 
 # Download and format dataverse data
@@ -176,11 +176,11 @@ if (file.exists("deposits.rds")) {
 - QDR currently has `r drupal_users` users registered in Drupal. 
 - `r drupal_new_users` of those users were created between `r period_begin` and `r period_end`.
 - `r drupal_unique_logins` unique users have logged in since `r period_begin`.
+- There have been at least `r drupal_unique_logins` unique logins since `r period_begin`. 
 
-Based on the time period used to generate the drupal login csv file:
+<!--Based on the time period used to generate the drupal login csv file:-->
 
-- There have been `r drupal_all_logins` logins. 
-- If we subtract presumed QDR staff members (> `r QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`.  
+<!--- If we subtract presumed QDR staff members (> `r QDR_staff_logins` logins/user), this number drops to `r drupal_logins_without_ff`. --> 
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
@@ -200,7 +200,7 @@ use %>% select(-`Views today`) %>% arrange(desc(`Total views`)) %>%
 ```{r members_drupal}
 members_drupal <- count(group_by(login, member))
 
-members_drupal <- login %>% group_by(member) %>% summarize(logins=sum(`Logins during time period`)) %>% full_join(members_drupal)
+members_drupal <- login %>% group_by(member) %>% summarize(recent=sum(recent)) %>% full_join(members_drupal)
 
 im_drupal <- login %>% group_by(member) %>% filter(Created < period_end & Created > period_begin) %>% 
   summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
@@ -209,14 +209,15 @@ im_drupal <- login %>% group_by(member) %>% filter(Created < period_end & Create
 # Here we write drupal member data to an external file
 # This was by request, in order to have an easier parsed version than the table
 im_drupal %>% filter(!is.na(member)) %>%
-  replace_na(replace = list(created_since=0, logins=0, n=0)) %>%
+  replace_na(replace = list(created_since=0, recent=FALSE, n=0)) %>%
   write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_drupal.csv"))
 
 # Now display the same data as a table in the PDF/HTML
 im_drupal %>%
-  knitr::kable(col.names = c("Institution", paste("Created between", 
-                                                  period_begin, "and", period_end),
-                             "Logins", "Total users"),
+  knitr::kable(col.names = c("Institution", 
+                             paste("Created between", period_begin, "and", period_end),
+                             paste("Min unique logins since", period_begin),
+                             "Total users"),
                caption="QDR Accounts and Logins by Institutional Members")
 ```
 
