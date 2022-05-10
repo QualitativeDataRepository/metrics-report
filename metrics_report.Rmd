@@ -21,7 +21,9 @@ library(dplyr)
 library(ggplot2)
 library(ggfortify)
 library(stringi)
-source("helper.R")
+source("R/im.R")
+source("R/deposits.R")
+source("R/mdc.R")
 
 ### Configurable variables
 
@@ -79,7 +81,7 @@ extend <- Sys.getenv("extend_im")
 if (extend!="") members <- c(members, extend)
 
 # Set tokens and file location settings
-dataverse_host <- "http://data.qdr.syr.edu"
+dataverse_host <- "data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN") # Github secret
 drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal") # Github secret
 
@@ -105,7 +107,7 @@ drupal_unique_logins <- sum(login$`Last login` > period_begin)
 drupal_logins_without_ff <- sum(login$`Logins during time period`[!login$frequent_flyer])
 
 # Download and format dataverse data
-dataverse <- paste0(dataverse_host, "/api/info/metrics")
+dataverse <- paste0('http://', dataverse_host, "/api/info/metrics")
 # Locally cache dataverse data as RDS files
 # This is mainly useful because it reduces API calls when compiling to multiple formats (i.e. PDF+HTML)
 if (file.exists("deposits.rds")) {
@@ -114,12 +116,8 @@ if (file.exists("deposits.rds")) {
   mdc <- readRDS("mdc.rds")
 } else {
   # This implements the search API to get all available data for all datasets
-  deposits <- content(GET(paste0(dataverse_host,
-                                 "/api/search/?q=*&type=dataset&per_page=1000"),
-                          config=add_headers("X-Dataverse-Key"=dataverse_key)))
-  # And unnest the ugly json arrays as a tibble
-  deposits <- tibble(deposit=deposits$data$items)
-  deposits <- deposits %>% unnest_wider(deposit)
+  deposits <- deposits_get(dataverse_host, dataverse_key)
+  saveRDS(deposits, "deposits.rds")
   
   # Collect all depositor affiliations in the institutions variable
   institutions <- lapply(deposits$global_id, FUN=function(x, key) {
@@ -155,9 +153,6 @@ if (file.exists("deposits.rds")) {
   }, regex)
   deposits$member <- unlist(matches)
   
-  # Some basic formatting, e.g. truncate names
-  deposits$name <- stringr::str_trunc(deposits$name, 75, "right")
-  deposits$versionState <- recode(deposits$versionState, RELEASED="Published", DRAFT="Unpublished")
   saveRDS(deposits, "deposits.rds")
   
   # These are aggregate stats, only require one API call
@@ -166,30 +161,9 @@ if (file.exists("deposits.rds")) {
   projects$date <- as.Date(paste0(projects$date, "-01"))
   saveRDS(projects, "projects.rds")
   
-  views_total <- content(GET(paste0(dataverse, '/makeDataCount/viewsTotal/monthly')))
-  views_total <- bind_rows(views_total$data)
-  names(views_total) <- c("date", "total")
-  
-  views_unique <- content(GET(paste0(dataverse, '/makeDataCount/viewsUnique/monthly')))
-  views_unique <- bind_rows(views_unique$data)
-  names(views_unique) <- c("date", "unique")
-  
-  downloads_total <- content(GET(paste0(dataverse, '/makeDataCount/downloadsTotal/monthly')))
-  downloads_total <- bind_rows(downloads_total$data)
-  names(downloads_total) <- c("date", "total")
-  
-  downloads_unique <- content(GET(paste0(dataverse, '/makeDataCount/downloadsUnique/monthly')))
-  downloads_unique <- bind_rows(downloads_unique$data)
-  names(downloads_unique) <- c("date", "unique")
-
-  # Easier to save all these calls as one list
-  mdc <- list(vt = views_total,
-              vu = views_unique,
-              dt = downloads_total,
-              du = downloads_unique)
+  mdc <- mdc_get(dataverse_host)
   saveRDS(mdc, "mdc.rds")
 }
-
 ```
 
 ## Parameters
@@ -380,24 +354,17 @@ MDC reports statistics as "total" and "unique".
 - Unique" views/downloads correspond to the number of unique sessions in which a data project has been viewed/downloaded. Roughly translates to: "X people have viewed/downloaded this project or its files."
 - Total views/downloads correspond to the number of times a project has been viewed/downloaded, including, e.g., multiple counts for multiple views/downloads in the same session or by the same user.
 
-```{r views}
-# Turn these data into a mts object
-# This can be plot like a ts
 
-both <- merge(mdc$vt, mdc$vu, all=TRUE, by="date")
-both_ts <- ts(both[, -1], frequency=12, 
-              start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) + labs(title="MDC Views", color="Statistic") +
-  scale_y_continuous(labels=scales::comma)
-```
+```{r mdc}
+if (exists("mdc")) {
+  stats_ts <- ts(mdc[, -1], frequency=12, start=strsplit(mdc$date[1], split="-")[[1]])
+} else {
+  stats_ts <- ts(downloads[, -1], frequency=12, 
+                start=strsplit(downloads$date[1], split="-")[[1]])
+}
 
+autoplot(stats_ts, facets = FALSE) +  labs(title="Statistics", color="Statistic") +
+    scale_y_continuous(labels=scales::comma)
 
-
-```{r downloads}
-both <- merge(mdc$dt, mdc$du, all=TRUE, by="date")
-both_ts <- ts(both[, -1], frequency=12, 
-              start=strsplit(both$date[1], split="-")[[1]])
-autoplot(both_ts, facets = FALSE) +  labs(title="MDC Downloads", color="Statistic") +
-  scale_y_continuous(labels=scales::comma)
 ```
 
