@@ -41,49 +41,22 @@ if (is.na(period_end)){
   period_end <- Sys.Date()
 }
 
-# How many logins before we assume a user is QDR staff?
-QDR_staff_logins <- 10
-
-
-# Institutional members
-members <-
-  c(
-    "American University",
-    "Brown University",
-    "Case Western",
-    "Columbia University",
-    "Cornell University",
-    "Duke University",
-    "Fordham",
-    "George Mason",
-    "George Washington University",
-    "Marine Corps",
-    "New York University",
-    "Palliative Care Research Cooperative",
-    "Princeton University",
-    "Syracuse University",
-    "University of California, Berkeley|UC Berkeley",
-    "California, Merced|UC Merced",
-    "University of California, San Francisco|UCSF",
-    "University of Cincinnati",
-    "University of Iowa",
-    "University of Maryland Baltimore",
-    "University of Michigan",
-    "University of New Mexico",
-    "University of North Carolina at Chapel Hill",
-    "University of Texas at Austin",
-    "Villanova University",
-    "Virginia Tech",
-    "West Virginia"
-  )
-# Add the prospective institutional member (input from github actions workflow)
-extend <- Sys.getenv("extend_im")
-if (extend!="") members <- c(members, extend)
-
 # Set tokens and file location settings
 dataverse_host <- "data.qdr.syr.edu"
 dataverse_key <- Sys.getenv("DATAVERSE_TOKEN") # Github secret
 drupal_folder <- paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/drupal") # Github secret
+
+# How many logins before we assume a user is QDR staff?
+QDR_staff_logins <- 10
+
+# Institutional members
+im <- read_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/institutional_members.csv"))
+# Add the prospective institutional member (input from github actions workflow)
+extend <- Sys.getenv("extend_im")
+if (extend!="") {
+  im <- im %>% bind_rows(tibble(
+    canonical=extend, drupal=extend, domain=NA, regexp=extend))
+}
 
 # Drupal data, format as necessary
 use <- read_csv(paste0(drupal_folder, "/use-stats.csv"))
@@ -96,9 +69,11 @@ login$full_name <- with(login, paste(`Last Name`, `First Name`, sep=", "))
 
 # Use number of logins specified above for QDR membership
 login$frequent_flyer <- login$`Logins during time period` > `QDR_staff_logins`
-# This runs the helper function
-login$member <- checkif_member(login, extend)
+
 login$recent <- as.Date(login$`Last login`) > period_begin
+
+# This runs the helper function
+login$member <- checkif_member(login, im)
 
 # Calculate basic drupal summary stats
 drupal_users <- nrow(login)
@@ -117,41 +92,14 @@ if (file.exists("deposits.rds")) {
 } else {
   # This implements the search API to get all available data for all datasets
   deposits <- deposits_get(dataverse_host, dataverse_key)
-  saveRDS(deposits, "deposits.rds")
-  
-  # Collect all depositor affiliations in the institutions variable
-  institutions <- lapply(deposits$global_id, FUN=function(x, key) {
-    # The only way to get institutional associations for depositors is to make a deposit-specific api query
-    # So we query each individual deposit
-    metadata <- content(GET(paste0("http://data.qdr.syr.edu",
-                                   "/api/datasets/:persistentId/?persistentId=", 
-                                   x), config=add_headers("X-Dataverse-Key"=key)))
-    # Again, unnest the json into a tibble
-    metadata <- 
-      tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
-      unnest_wider(info)
-    
-    affiliations <-
-      metadata %>% filter(typeName == "author") %>% select("value") %>%
-      unnest_auto(value) %>% unnest_auto(value)
-    
-    # check if there's no affiliation entry in the metadata
-    if (is.null(affiliations$authorAffiliation)) {
-      return(NA)
-    }
-    
-    affiliations %>%
-      select("authorAffiliation") %>% unnest_wider(authorAffiliation) %>%
-      select("value") %>% .$value
-  }, dataverse_key)
+  deposits$dvurl <- paste0("http://data.qdr.syr.edu/api/datasets/:persistentId/?persistentId=", deposits$global_id)
+
+  # We query individual deposit to get *depositor* affiliation
+  # This extra API call would be unnecessary to only get contact affiliation
+  institutions <- lapply(deposits$dvurl, deposit_affiliations, dataverse_key)
   
   # Run all the depositor affiliations against a regex of institutional members
-  regex <- paste0("\\b(?:", paste(members, collapse="|"), ")\\b")
-  matches <- lapply(institutions, function(x, regex) {
-    matches <- stringr::str_extract(x, regex)
-    dplyr::first(na.omit(matches))
-  }, regex)
-  deposits$member <- unlist(matches)
+  deposits$member <- member_regexp(institutions, im)
   
   saveRDS(deposits, "deposits.rds")
   

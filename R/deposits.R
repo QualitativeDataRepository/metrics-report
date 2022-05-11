@@ -47,3 +47,37 @@ deposits_get <- function(domain, key=NULL) {
 
   return(deposits)
 }
+
+#' deposit_affiliations
+#' 
+#' Get author affiliations associated with a dataverse project
+#'
+#' @param url Full url of Dataverse deposit (i.e. https://demo.dataverse.org/dataset.xhtml?persistentId=doi:XXXX/YYYY)
+#' @param key API key for Dataverse instance (optional, necessary for drafts)
+#'
+#' @return list of vectors, each top-level entry representing a deposit
+#' @import httr, dplyr, magrittr, stringr, tibble
+#' @export
+#'
+#' @examples deposit_affiliations("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DJTMJC")
+deposit_affiliations <- function(url, key=NULL) {
+  metadata <- content(GET(url, config=add_headers("X-Dataverse-Key"=key)))
+
+  metadata <- 
+    tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
+    unnest_wider(info)
+  
+  affiliations <-
+    metadata %>% filter(typeName == "author") %>% select("value") %>%
+    unnest_auto(value) %>% unnest_auto(value)
+  
+  # check if there's no affiliation entry in the metadata
+  if (is.null(affiliations$authorAffiliation)) {
+    return(NA)
+  }
+  
+  affiliations %>%
+    select("authorAffiliation") %>% unnest_wider(authorAffiliation) %>%
+    select("value") %>% .$value
+}
+
