@@ -146,11 +146,11 @@ use %>% select(-`Views today`) %>% arrange(desc(`Total views`)) %>%
 ```
 
 ```{r members_drupal}
-members_drupal <- count(group_by(login, member))
+members_drupal <- count(group_by(login, member, .drop=FALSE))
 
-members_drupal <- login %>% group_by(member) %>% summarize(recent=sum(recent)) %>% full_join(members_drupal)
+members_drupal <- login %>% group_by(member, .drop=FALSE) %>% summarize(recent=sum(recent)) %>% full_join(members_drupal)
 
-im_drupal <- login %>% group_by(member) %>% filter(Created < period_end & Created > period_begin) %>% 
+im_drupal <- login %>% group_by(member, .drop=FALSE) %>% filter(Created < period_end & Created > period_begin) %>% 
   summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
   arrange(desc(n)) %>% replace_na(list(created_since=0))
 
@@ -261,14 +261,15 @@ projects %>% group_by(pid) %>% filter(date < period_end &
 
 ```{r member_projects}
 member_deposits <- deposits %>% filter(!is.na(member)) %>% 
-  group_by(member, versionState) %>% 
+  group_by(member, versionState, .drop=FALSE) %>% 
   tally()
 
 im_deposit <- 
   deposits %>% filter(!is.na(member) & as.Date(createdAt) < period_end & as.Date(createdAt) > period_begin) %>% 
-  group_by(member, versionState) %>% 
+  group_by(member, versionState, .drop=FALSE) %>% 
   summarize(period=length(global_id)) %>% full_join(member_deposits) %>%
-  pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), values_fill=0) 
+  pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), values_fill=0) %>%
+  select(n.Published, n.Unpublished, period.Published, period.Unpublished)
 
 im_deposit %>% knitr::kable(caption="Deposits associated with institutional members",
                col.names = c("Institutional member name", 
@@ -285,7 +286,7 @@ im_deposit %>%
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   inner_join(deposits) %>% select("name", "global_id", "member", "downloads") %>%
   filter(!is.na(member)) %>% arrange(desc(downloads)) %>%
-  group_by(member) %>% slice_head(n=3) %>%
+  group_by(member, .drop=FALSE) %>% slice_head(n=3) %>%
   mutate(name = paste0("[", name, "](", 
                       "https://data.qdr.syr.edu/dataset.xhtml?persistentId=", 
                       global_id, ")")) %>% select(!global_id) %>%
