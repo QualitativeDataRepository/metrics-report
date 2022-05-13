@@ -27,7 +27,7 @@ checkif_member <- function(login, im) {
     match <- str_which(domain, paste0(x, "$"))
     if (length(match)==0) return(NA) 
     return(match[1])
-  }, str_to_lower(im$drupal)))
+  }, str_to_lower(im$domain)))
   
   matches <- dplyr::coalesce(institution_match, email_match)
   matches <- factor(matches, levels = 1:nrow(im), labels = im$canonical)
