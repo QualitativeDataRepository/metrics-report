@@ -1,0 +1,30 @@
+canonical,drupal,domain,regexp
+American University,American,american.edu,American University
+Brown University,Brown,brown.edu,Brown University
+Case Western Reserve University,Case Western,case.edu,Case Western
+Columbia University,Columbia,columbia.edu,Columbia University
+Cornell,Cornell,cornell.edu,Cornell University
+Duke University,Duke,duke.edu,Duke University
+Fordham University,Fordham,fordham.edu,Fordham
+George Mason University,George Mason,gmu.edu,George Mason
+George Washington University,George Washington,gwu.edu,George Washington University
+Marine Corps University,Marine Corps,usmcu.edu,Marine Corps
+New York University,New York,nyu.edu,New York University|NYU
+PCRC,Palliative Care Research Cooperative,palliativecareresearch.org,Palliative Care Research Collaborative
+Princeton University,Princeton,princeton.edu,Princeton University
+Syracuse University,Syracuse,syr.edu,Syracuse University
+UC Berkeley,"California, Berkeley",berkeley.edu,Berkeley
+UC Merced,"California, Merced",ucmerced.edu,"California, Merced|UC Merced"
+UC San Francisco,"California, San Francisco",ucsf.edu,"University of California, San Francisco|UCSF"
+UNC at Chapel Hill,"North Carolina, Chapel Hill",unc.edu,University of North Carolina at Chapel Hill|UNC Chapel Hill
+University of Cincinnati,Cincinnati,uc.edu,University of Cincinnati
+University of Iowa,Iowa,uiowa.edu,University of Iowa
+University of Maryland-- Baltimore,"Maryland, Baltimore",umaryland.edu,"University of Maryland Baltimore$|Maryland, Baltimore$"
+University of Michigan,"Michigan, Ann Arbor",umich.edu,University of Michigan
+University of New Mexico,New Mexico,unm.edu,University of New Mexico
+University of Texas at Austin,"Texas, Austin",utexas.edu,University of Texas at Austin
+University of Pennsylvania,University of Pennsylvania,upenn.edu,University of Pennsylvania
+"University of Washington, Seattle","Washington, Seattle",uw.edu,"University of Washington|Washington, Seattle"
+Villanova University,Villanova,villanova.edu,Villanova University
+Virginia Tech University,Virginia Tech,vt.edu,Virginia Tech
+West Virginia University ,West Virginia,wvu.edu,West Virginia
