@@ -100,6 +100,9 @@ if (file.exists("deposits.rds")) {
   
   # Run all the depositor affiliations against a regex of institutional members
   deposits$member <- member_regexp(institutions, im)
+  # Detect PCRC on the basis of the publisher field
+  deposits$member[deposits$publisher=="Palliative Care Research Cooperative QDR-EOLPC "] <-
+    "PCRC"
   
   saveRDS(deposits, "deposits.rds")
   
