@@ -146,12 +146,15 @@ use %>% select(-`Views today`) %>% arrange(desc(`Total views`)) %>%
 ```
 
 ```{r members_drupal}
-members_drupal <- count(group_by(login, member, .drop=FALSE))
+# Get total n per member
+im_drupal <- count(group_by(login, member, .drop=FALSE))
 
-members_drupal <- login %>% group_by(member, .drop=FALSE) %>% summarize(recent=sum(recent)) %>% full_join(members_drupal)
+# Get recent logins since period begin
+im_drupal <- login %>% group_by(member, .drop=FALSE) %>% summarize(recent=sum(recent)) %>% full_join(im_drupal)
 
+# Get created between period_begin and period_end
 im_drupal <- login %>% group_by(member, .drop=FALSE) %>% filter(Created < period_end & Created > period_begin) %>% 
-  summarize(created_since=length(`Name/Email`)) %>% full_join(members_drupal) %>%
+  summarize(created_since=length(`Name/Email`)) %>% full_join(im_drupal) %>%
   arrange(desc(n)) %>% replace_na(list(created_since=0))
 
 # Here we write drupal member data to an external file
@@ -161,7 +164,8 @@ im_drupal %>% filter(!is.na(member)) %>%
   write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_drupal.csv"))
 
 # Now display the same data as a table in the PDF/HTML
-im_drupal %>%
+opts <- options(knitr.kable.NA = "N/A")
+im_drupal %>% 
   knitr::kable(col.names = c("Institution", 
                              paste("Created between", period_begin, "and", period_end),
                              paste("Min unique logins since", period_begin),
@@ -186,6 +190,8 @@ published_new <- deposits %>% filter(as.Date(published_at) < period_end & as.Dat
 - `r published_new` projects were published between `r period_begin` and `r period_end`.
 
 ```{r subject}
+opts <- options(knitr.kable.NA = 0)
+
 deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
   knitr::kable(caption="Total deposits by publication status", col.names=c("Status", "Deposits"))
 
