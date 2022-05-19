@@ -39,6 +39,7 @@ member_regexp <- function(affiliations, im) {
   # Run all the depositor affiliations against a regex of institutional members
   regex <- paste0("\\b(?:", paste(im$regexp, collapse="|"), ")\\b")
   matches <- lapply(affiliations, function(x, regex) {
+    if (is.vector(x)) x <- paste(unlist(x), collapse=" ")
     matches <- stri_extract_all_regex(x, regex, case_insensitive=TRUE)
     #matches <- stringr::str_extract(fixed(x, ignore_case), regex,)
     dplyr::first(na.omit(matches))
