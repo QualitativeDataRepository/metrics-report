@@ -266,14 +266,14 @@ projects %>% group_by(pid) %>% filter(date < period_end &
 ### Institutional members
 
 ```{r member_projects}
-member_deposits <- deposits %>% filter(!is.na(member)) %>% 
+im_deposit <- deposits %>% filter(!is.na(member)) %>% 
   group_by(member, versionState, .drop=FALSE) %>% 
   tally()
 
 im_deposit <- 
   deposits %>% filter(!is.na(member) & as.Date(createdAt) < period_end & as.Date(createdAt) > period_begin) %>% 
   group_by(member, versionState, .drop=FALSE) %>% 
-  summarize(period=length(global_id)) %>% full_join(member_deposits) %>%
+  summarize(period=length(global_id)) %>% full_join(im_deposit) %>%
   pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), values_fill=0) %>%
   select(n.Published, n.Unpublished, period.Published, period.Unpublished)
 
