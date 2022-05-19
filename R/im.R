@@ -46,7 +46,7 @@ member_regexp <- function(affiliations, im) {
   }, regex)
 
   matches <- unlist(lapply(matches, function(x, im) {
-    if (is.na(x)) return(NA)
+    if (!any(is.na(x))) return(NA)
     im$canonical[as.vector(!is.na(stri_extract_all_regex(im$regexp, x, case_insensitive=TRUE)))]
   }, im))
   
