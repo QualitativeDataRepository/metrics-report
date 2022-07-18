@@ -54,6 +54,7 @@ im <- read_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/institutional_members.
 # Add the prospective institutional member (input from github actions workflow)
 extend <- Sys.getenv("extend_im")
 if (extend!="") {
+  extend <- unlist(strsplit(extend, ","))
   im <- im %>% bind_rows(tibble(
     canonical=extend, drupal=extend, domain=NA, regexp=extend))
 }
