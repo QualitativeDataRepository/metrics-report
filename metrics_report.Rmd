@@ -51,6 +51,7 @@ QDR_staff_logins <- 10
 
 # Institutional members
 im <- read_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/institutional_members.csv"))
+if (file.exists(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "")))
 # Add the prospective institutional member (input from github actions workflow)
 extend <- Sys.getenv("extend_im")
 if (extend!="") {
@@ -164,7 +165,7 @@ im_drupal <- login %>% group_by(member, .drop=FALSE) %>% filter(Created < period
 # This was by request, in order to have an easier parsed version than the table
 im_drupal %>% filter(!is.na(member)) %>%
   replace_na(replace = list(created_since=0, recent=FALSE, n=0)) %>%
-  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_drupal.csv"))
+  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/output/im_drupal.csv"))
 
 # Now display the same data as a table in the PDF/HTML
 opts <- options(knitr.kable.NA = "N/A")
@@ -290,7 +291,7 @@ im_deposit %>% knitr::kable(caption="Deposits associated with institutional memb
 # This is easier to parse than the table that is included in the PDF/HTML
 im_deposit %>% 
   replace_na(list(n.Published=0, n.Unpublished=0, period.Published=0, period.Unpublished=0)) %>%
-  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/im_deposits.csv"))
+  write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/output/im_deposits.csv"))
 
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   inner_join(deposits) %>% select("name", "global_id", "member", "downloads") %>%

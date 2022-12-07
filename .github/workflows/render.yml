@@ -38,7 +38,7 @@ jobs:
           extend_im: ${{ github.event.inputs.extend_im }}
           period_begin: ${{ github.event.inputs.period_begin }}
           period_end: ${{ github.event.inputs.period_end }}
-        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir=Sys.getenv("EXTERNAL_GH_FOLDER"))'
+        run: Rscript -e 'rmarkdown::render("metrics_report.Rmd", "all", output_dir=paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/output")'
       - name: Commit results
         run: |
           cd $EXTERNAL_GH_FOLDER
