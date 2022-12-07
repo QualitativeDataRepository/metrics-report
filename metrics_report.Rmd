@@ -21,9 +21,11 @@ library(dplyr)
 library(ggplot2)
 library(ggfortify)
 library(stringi)
-source("R/im.R")
-source("R/deposits.R")
-source("R/mdc.R")
+
+# load other functions
+source("R/im.R") # instutitonal members stats
+source("R/deposits.R") # deposits on dataverse
+source("R/mdc.R") # make data count stats
 
 ### Configurable variables
 
@@ -199,11 +201,12 @@ opts <- options(knitr.kable.NA = 0)
 deposits %>% group_by(versionState) %>% summarize(n=n()) %>%
   knitr::kable(caption="Total deposits by publication status", col.names=c("Status", "Deposits"))
 
+# Summarize published projects by subject
 deposits_subj <- deposits %>% 
   filter(versionState=="Published") %>% select(c("subjects")) %>%
   unnest_longer(subjects) %>% group_by(subjects) %>% summarize(published=n())
-
   
+# any of those published projects created during the specified period?
 if  (nrow(subset(deposits, as.Date(createdAt) < period_end &
                as.Date(createdAt) > period_begin))==0) {
   
@@ -213,12 +216,13 @@ if  (nrow(subset(deposits, as.Date(createdAt) < period_end &
     select(c("subjects")) %>% unnest_longer(subjects) %>% group_by(subjects) %>%
     summarize(period=n()) %>% full_join(deposits_subj)
 
-  } else {
+} else {
   deposits_subj$period <- 0
 }
 
 # Any unpublished projects?
 if (any(deposits$versionState=="Unpublished")) {
+  # join with the published projects table
   deposits_subj <- deposits %>% filter(versionState=="Unpublished") %>% select(c("subjects")) %>%
     unnest_longer(subjects) %>% group_by(subjects) %>%
     summarize(unpublished=n()) %>% full_join(deposits_subj)
@@ -238,6 +242,8 @@ if (any(subset(deposits, as.Date(createdAt) < period_end &
   deposits_subj$unpublished_period <- 0
 }
 
+# make the table on publications by subject
+# published and unpublished, total and within-period
 deposits_subj[, c("subjects", "published", 
                   "unpublished", "period", "unpublished_period")] %>% 
   knitr::kable(caption="Deposits by subject",
@@ -247,6 +253,9 @@ deposits_subj[, c("subjects", "published",
 ```
 
 ```{r top}
+# Downloaded projects
+
+# All time downloaded projects, sort from the scraped dataframe and add clickable links
 projects %>% group_by(pid) %>% summarize(sum(count)) %>% 
   arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
   mutate(pid = paste0("[", deposits$name[deposits$global_id %in% pid], "](", 
@@ -255,6 +264,7 @@ projects %>% group_by(pid) %>% summarize(sum(count)) %>%
   knitr::kable(caption="Top 5 all time downloaded projects",
              row.names = FALSE, col.names = c("Project", "Downloads"))
 
+# same as above, but only for the specified period
 projects %>% group_by(pid) %>% filter(date < period_end &
                       date > period_begin) %>% 
   summarize(sum(count)) %>% arrange(desc(`sum(count)`)) %>% slice(1:5) %>%
@@ -270,10 +280,13 @@ projects %>% group_by(pid) %>% filter(date < period_end &
 ### Institutional members
 
 ```{r member_projects}
-im_deposit <- deposits %>% filter(!is.na(member)) %>% 
+# projects deposited by users associated with institutional members
+im_deposit <- deposits %>% filter(!is.na(member)) %>%
   group_by(member, versionState, .drop=FALSE) %>% 
   tally()
 
+# collect stats of published and unpublished projects per member
+# both total and within period
 im_deposit <- 
   deposits %>% filter(!is.na(member) & as.Date(createdAt) < period_end & as.Date(createdAt) > period_begin) %>% 
   group_by(member, versionState, .drop=FALSE) %>% 
@@ -281,6 +294,7 @@ im_deposit <-
   pivot_wider(names_from=versionState, names_sep=".", values_from=c(n, period), values_fill=0) %>%
   select(n.Published, n.Unpublished, period.Published, period.Unpublished)
 
+# generate the table
 im_deposit %>% knitr::kable(caption="Deposits associated with institutional members",
                col.names = c("Institutional member name", 
                              "Total published", "Total unpublished",
@@ -293,6 +307,7 @@ im_deposit %>%
   replace_na(list(n.Published=0, n.Unpublished=0, period.Published=0, period.Unpublished=0)) %>%
   write_csv(paste0(Sys.getenv("EXTERNAL_GH_FOLDER"), "/output/im_deposits.csv"))
 
+# Sort the top projects per member and create clickable links
 projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   inner_join(deposits) %>% select("name", "global_id", "member", "downloads") %>%
   filter(!is.na(member)) %>% arrange(desc(downloads)) %>%
@@ -300,6 +315,7 @@ projects %>% group_by(global_id=pid) %>% summarize(downloads=sum(count)) %>%
   mutate(name = paste0("[", name, "](", 
                       "https://data.qdr.syr.edu/dataset.xhtml?persistentId=", 
                       global_id, ")")) %>% select(!global_id) %>%
+  # and output the table
   knitr::kable(caption="Top 3 downloads from each member institution",
                col.names = c("Deposit", "Member institution", "Downloads"),
                linesep = "\\addlinespace")
@@ -316,6 +332,7 @@ MDC reports statistics as "total" and "unique".
 
 
 ```{r mdc}
+# not all dataverse instances use MDC data (QDR does). In case they don't, we use the regular downloads stats
 if (exists("mdc")) {
   stats_ts <- ts(mdc[, -1], frequency=12, start=strsplit(mdc$date[1], split="-")[[1]])
 } else {
@@ -323,6 +340,7 @@ if (exists("mdc")) {
                 start=strsplit(downloads$date[1], split="-")[[1]])
 }
 
+# plot the available stats
 autoplot(stats_ts, facets = FALSE) +  labs(title="Statistics", color="Statistic") +
     scale_y_continuous(labels=scales::comma)
 
