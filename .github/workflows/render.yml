@@ -31,7 +31,7 @@ jobs:
         env:
           EXTERNAL_GH_TOKEN: ${{ secrets.EXTERNAL_GH_TOKEN }}
         run: |
-          git clone "https://$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/$EXTERNAL_GH_FOLDER"
+          git clone "https://oauth2:$EXTERNAL_GH_TOKEN@github.com/QualitativeDataRepository/$EXTERNAL_GH_FOLDER.git"
       - name: Render documents
         env:
           DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
