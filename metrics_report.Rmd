@@ -138,7 +138,7 @@ if (file.exists("deposits.rds")) {
 
 ```{r drupal}
 login %>% group_by(Institution) %>% summarise(users=length(`User status`)) %>% 
-  arrange(desc(users)) %>% slice(1:10) %>%
+  arrange(desc(users)) %>% slice(1:25) %>%
   knitr::kable(row.names = FALSE, col.names = c("Institution", "Affiliated users"),
                caption="Top institutional affiliations by number of users")
 
