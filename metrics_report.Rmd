@@ -101,9 +101,11 @@ if (file.exists("deposits.rds")) {
   # We query individual deposit to get *depositor* affiliation
   # This extra API call would be unnecessary to only get contact affiliation
   institutions <- lapply(deposits$dvurl, deposit_affiliations, dataverse_key)
-  
+
+print(deposits)
   # Run all the depositor affiliations against a regex of institutional members
-  deposits$member <- member_regexp(institutions, im)
+print(member_regexp(institutions, im)  
+deposits$member <- member_regexp(institutions, im)
 
   
   saveRDS(deposits, "deposits.rds")
