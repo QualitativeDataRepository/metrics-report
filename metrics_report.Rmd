@@ -104,7 +104,7 @@ if (file.exists("deposits.rds")) {
 
 print(deposits)
   # Run all the depositor affiliations against a regex of institutional members
-print(member_regexp(institutions, im)  
+print(member_regexp(institutions, im)) 
 deposits$member <- member_regexp(institutions, im)
 
   
