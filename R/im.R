@@ -20,9 +20,9 @@ member_regexp <- function(affiliations, im) {
   }, regex)
 
   matches <- lapply(matches, function(x, im) {
-    match <- im$canonical[as.vector(!is.na(stri_extract_all_regex(im$regexp, x, case_insensitive=TRUE)))]
+    match <- im$canonical[as.vector(!is.na(stri_extract_first_regex(im$regexp, x, case_insensitive=TRUE)))]
     if (length(match)==0) return(NA)
-    match
+    match[1] # Only grabbing the first match to make sure the vector length stays the same
   }, im)
   
   factor(unlist(matches), levels=im$canonical, labels=im$canonical)
