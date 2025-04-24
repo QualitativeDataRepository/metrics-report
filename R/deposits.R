@@ -66,7 +66,7 @@ deposit_affiliations <- function(url, key=NULL) {
   metadata <- 
     tibble(info=metadata$data$latestVersion$metadataBlocks$citation$fields) %>% 
     unnest_wider(info)
-  
+  print(url)
   affiliations <-
     metadata %>% filter(typeName == "author") %>% select("value") %>%
     unnest_auto(value) %>% unnest_auto(value)
