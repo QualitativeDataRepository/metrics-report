@@ -98,9 +98,17 @@ if (file.exists("deposits.rds")) {
   deposits <- deposits_get(dataverse_host, dataverse_key)
   deposits$dvurl <- paste0("http://data.qdr.syr.edu/api/datasets/:persistentId/?persistentId=", deposits$global_id)
 
+  institutions  <-  lapply(deposits$contacts, function(contact_group) {
+      # For each contact in the group, extract just the affiliation
+      lapply(contact_group, function(contact) {
+        contact$affiliation
+      })
+    })
+    
+  
   # We query individual deposit to get *depositor* affiliation
   # This extra API call would be unnecessary to only get contact affiliation
-  institutions <- lapply(deposits$dvurl, deposit_affiliations, dataverse_key)
+  # institutions <- lapply(deposits$dvurl, deposit_affiliations, dataverse_key)
 
 print(deposits)
   # Run all the depositor affiliations against a regex of institutional members
