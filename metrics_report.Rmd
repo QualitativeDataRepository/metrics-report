@@ -169,7 +169,7 @@ im_drupal <- login %>% group_by(member, .drop=FALSE) %>% summarize(recent=sum(re
 
 # Get created between period_begin and period_end
 im_drupal <- login %>% group_by(member, .drop=FALSE) %>% filter(Created < period_end & Created > period_begin) %>% 
-  summarize(created_since=length(`Name/Email`)) %>% full_join(im_drupal) %>%
+  summarize(created_since=length(`Email`)) %>% full_join(im_drupal) %>%
   arrange(desc(n)) %>% replace_na(list(created_since=0))
 
 # Here we write drupal member data to an external file
