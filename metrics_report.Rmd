@@ -65,7 +65,7 @@ if (extend!="") {
 # Drupal data, format as necessary
 use <- read_csv(paste0(drupal_folder, "/use-stats.csv"))
 login <- read_csv(paste0(drupal_folder, "/login-history.csv"))
-login$Created <- as.Date(login$Created, format = "%m/%d/%Y")
+login$Created <- as.Date(login$Created, format = "%m/%d/%y")
 login$`Last login` <- as.Date(login$`Last login`, format = "%a, %m/%d/%Y - %R")
 login$Institution <- toupper(login$Institution)
 login$Institution <- trimws(login$Institution)
