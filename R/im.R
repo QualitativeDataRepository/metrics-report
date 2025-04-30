@@ -42,8 +42,8 @@ checkif_member <- function(login, im) {
   
   institution_match <- member_regexp(login$Institution, im)
   
-  login$`Name/Email` <- str_extract(login$`Name/Email`, "[a-zA-Z0-9]+\\.edu$")
-  email_match <- unlist(lapply(login$`Name/Email`, function(x, domain) {
+  login$`Email` <- str_extract(login$`Email`, "[a-zA-Z0-9]+\\.edu$")
+  email_match <- unlist(lapply(login$`Email`, function(x, domain) {
     match <- str_which(domain, paste0("^", x, "$"))
     if (length(match)==0) return(NA) 
     return(match[1])
